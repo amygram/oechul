@@ -8,12 +8,13 @@
   var WD = ['일', '월', '화', '수', '목', '금', '토'];
   function cp(c) { return { k: c.k, label: c.label, c: c.c }; }
   function okCat(c) { return !!c && typeof c.k === 'string' && c.k && typeof c.label === 'string' && c.label && Number.isInteger(c.c) && c.c >= 0 && c.c < PAL; }
-  function isMine(id) { return id === '_cats' || id === '_pin' || String(id).indexOf('n_') === 0; }
+  function okTpl(t) { return !!t && typeof t.id === 'string' && typeof t.name === 'string' && Array.isArray(t.items); }
+  function isMine(id) { return id === '_cats' || id === '_pin' || id === '_tpl' || id === '_ui' || String(id).indexOf('n_') === 0; }
 
-  var N = { notes: [], cats: DEF.map(cp), pin: '' };
+  var N = { notes: [], cats: DEF.map(cp), pin: '', tpls: [], ui: {} };
   var busy = {}, chain = {}, failed = {};
   var M = { tab: 'all', cat: 'blog', pick: '', composer: false, manage: false, addCat: false, pinMode: '', editDate: null, catPick: null,
-    ask: null, askAt: 0, move: null, moveAt: 0, subFor: null, subAsk: null, subAskAt: 0, showDone: false, armedCat: null, armAt: 0, err: '', focus: null };
+    ask: null, askAt: 0, editText: null, editSub: null, move: null, moveAt: 0, subFor: null, subAsk: null, subAskAt: 0, showDone: false, armedCat: null, armAt: 0, err: '', focus: null };
   var C = { y: 0, m: 0, sel: '', cat: '' };
 
   function today() { var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
@@ -93,7 +94,7 @@
   function pad2(s) { return s.length < 2 ? '0' + s : s; }
 
   /* ---------- 저장 ---------- */
-  function cache() { try { localStorage.setItem(LS, JSON.stringify({ notes: N.notes, cats: N.cats, pin: N.pin })); } catch (e) {} }
+  function cache() { try { localStorage.setItem(LS, JSON.stringify({ notes: N.notes, cats: N.cats, pin: N.pin, tpls: N.tpls, ui: N.ui })); } catch (e) {} }
   function loadCache() {
     try {
       var c = JSON.parse(localStorage.getItem(LS) || 'null');
@@ -101,6 +102,8 @@
         if (Array.isArray(c.notes)) N.notes = c.notes;
         if (Array.isArray(c.cats)) { var l = c.cats.filter(okCat).map(cp); if (l.length) N.cats = l; }
         if (typeof c.pin === 'string') N.pin = c.pin;
+        if (Array.isArray(c.tpls)) N.tpls = c.tpls.filter(okTpl);
+        if (c.ui && typeof c.ui === 'object') N.ui = c.ui;
       }
     } catch (e) {}
     fixSel();
@@ -108,6 +111,8 @@
   function docOf(id) {
     if (id === '_cats') return { list: N.cats };
     if (id === '_pin') return { h: N.pin };
+    if (id === '_tpl') return { list: N.tpls };
+    if (id === '_ui') return N.ui;
     var n = N.notes.filter(function (x) { return x.id === id; })[0];
     if (!n) return null;
     var o = {}; Object.keys(n).forEach(function (k) { if (k !== 'id') o[k] = n[k]; });
@@ -134,12 +139,14 @@
 
   /* 서버에서 받은 행들 중 메모 쪽을 가져가고, 외출준비 목록 행만 돌려준다 */
   function sync(rows) {
-    var incoming = [], cats = null, pin = null, rest = [];
+    var incoming = [], cats = null, pin = null, tpls = null, ui = null, rest = [];
     rows.forEach(function (r) {
       if (!isMine(r.id)) { rest.push(r); return; }
       var d = r.data || {};
       if (r.id === '_cats') { if (Array.isArray(d.list)) { var l = d.list.filter(okCat).map(cp); if (l.length) cats = l; } }
       else if (r.id === '_pin') { pin = typeof d.h === 'string' ? d.h : ''; }
+      else if (r.id === '_tpl') { tpls = Array.isArray(d.list) ? d.list.filter(okTpl) : []; }
+      else if (r.id === '_ui') { ui = d; }
       else { incoming.push(Object.assign({}, d, { id: r.id })); }
     });
     var keep = function (id) { return busy[id] || failed[id]; };
@@ -148,6 +155,8 @@
     N.notes = merged;
     if (!keep('_cats')) N.cats = cats || DEF.map(cp);
     if (!keep('_pin')) N.pin = pin || '';
+    if (!keep('_tpl')) N.tpls = tpls || [];
+    if (!keep('_ui')) N.ui = ui || {};
     fixSel(); cache();
     return rest;
   }
@@ -161,6 +170,8 @@
       var d = p.new.data || {};
       if (id === '_cats') { var l = Array.isArray(d.list) ? d.list.filter(okCat).map(cp) : []; N.cats = l.length ? l : DEF.map(cp); }
       else if (id === '_pin') { N.pin = typeof d.h === 'string' ? d.h : ''; }
+      else if (id === '_tpl') { N.tpls = Array.isArray(d.list) ? d.list.filter(okTpl) : []; }
+      else if (id === '_ui') { N.ui = d; }
       else {
         var n = Object.assign({}, d, { id: id }), i = N.notes.findIndex(function (x) { return x.id === id; });
         if (i >= 0) N.notes[i] = n; else N.notes.push(n);
@@ -189,8 +200,10 @@
       h += '<ul class="nsublist">' + subs.map(function (s) {
         var key = n.id + '|' + s.id, ask = M.subAsk === key;
         return '<li class="nsub' + (s.done ? ' done' : '') + '"><button class="tick small" data-act="nsubtick" data-n="' + n.id + '" data-s="' + s.id + '" aria-label="' + E(s.text) + ' 챙김">' + TICK + '</button>' +
-          '<span class="txt">' + E(s.text) + '</span>' +
-          (ask ? '<span class="askdel">지울까요?</span><button class="btn warn mini" data-act="nsubyes" data-n="' + n.id + '" data-s="' + s.id + '">지우기</button><button class="btn ghost mini" data-act="nsubno">취소</button>'
+          (M.editSub === key
+            ? '<form class="nsubedit nsubform" data-nsubedit="' + key + '" style="flex:1"><input data-keep="es' + key + '" value="' + E(s.text) + '" maxlength="100" autocomplete="off" aria-label="준비물 고치기"><button class="btn mini" type="submit">저장</button><button class="btn ghost mini" type="button" data-act="nsubeditcancel">취소</button></form>'
+            : '<span class="txt" data-act="nsubedit" data-n="' + n.id + '" data-s="' + s.id + '">' + E(s.text) + '</span>') +
+          (M.editSub === key ? '' : ask ? '<span class="askdel">지울까요?</span><button class="btn warn mini" data-act="nsubyes" data-n="' + n.id + '" data-s="' + s.id + '">지우기</button><button class="btn ghost mini" data-act="nsubno">취소</button>'
             : '<button class="del" data-act="nsubdel" data-n="' + n.id + '" data-s="' + s.id + '" aria-label="' + E(s.text) + ' 지우기">×</button>') + '</li>';
       }).join('') + '</ul>';
     }
@@ -205,7 +218,9 @@
     var ci = catInfo(n.cat), over = n.date && n.cat !== 'blog' && !n.done ? dd(n.date) : null;
     var h = '<li class="nitem k' + ci.c + (n.done ? ' done' : '') + '" data-n="' + n.id + '">' +
       '<button class="tick" data-act="ntick" data-n="' + n.id + '" aria-label="' + E(n.text) + ' ' + (n.done ? '체크 해제' : '챙김') + '">' + TICK + '</button>' +
-      '<div class="nbody"><div class="txtwrap"><span class="txt">' + E(n.text) + '</span></div><div class="nmeta">' +
+      '<div class="nbody">' + (M.editText === n.id
+        ? '<form class="nedit nsubform" data-nedit="' + n.id + '"><input data-keep="et' + n.id + '" value="' + E(n.text) + '" maxlength="300" autocomplete="off" aria-label="내용 고치기"><button class="btn mini" type="submit">저장</button><button class="btn ghost mini" type="button" data-act="neditcancel">취소</button></form>'
+        : '<div class="txtwrap" data-act="nedit" data-n="' + n.id + '"><span class="txt">' + E(n.text) + '</span></div>') + '<div class="nmeta">' +
       '<button class="ntag" data-act="ncatpick" data-n="' + n.id + '" aria-label="분류 바꾸기: ' + E(ci.label) + '">' + E(ci.label) + '</button>';
     if (M.editDate === n.id) {
       h += '<input type="date" class="ndate" data-chg="idate" data-n="' + n.id + '" value="' + (n.date || '') + '" aria-label="날짜 바꾸기">' +
@@ -213,6 +228,7 @@
         '<button class="btn ghost mini" data-act="ndateclose">닫기</button>';
     } else {
       h += '<button class="nwhen' + (n.date ? '' : ' ghost') + '" data-act="ndate" data-n="' + n.id + '">' + (n.date ? fShort(n.date) + (n.cat === 'ticket' ? '까지' : '') : '날짜 넣기') + '</button>';
+      h += '<button class="btn ghost mini" data-act="nedit" data-n="' + n.id + '" aria-label="' + E(n.text) + ' 고치기">✎ 고치기</button>';
       if (over !== null) h += '<span class="dday small' + (over <= 1 ? ' urgent' : '') + '">' + ddLabel(over) + '</span>';
     }
     h += '</div>';
@@ -444,7 +460,7 @@
       }
     }
   }
-  function refresh() { render(); }
+  function refresh() { render(); if (window.applyUI) window.applyUI(); }
   function render_() { if (typeof render === 'function' && window.render) window.render(); else refresh(); }
 
   /* ---------- 동작 ---------- */
@@ -495,6 +511,10 @@
       case 'ndel': M.ask = id; M.askAt = Date.now(); M.subAsk = null; render(); return;
       case 'ndelno': M.ask = null; render(); return;
       case 'ndelyes': if (Date.now() - M.askAt < 500) return; M.ask = null; N.notes = N.notes.filter(function (n) { return n.id !== id; }); render(); removeRow(id); return;
+      case 'nedit': M.editText = id; M.editSub = null; M.focus = '[data-keep="et' + id + '"]'; render(); return;
+      case 'neditcancel': M.editText = null; render(); return;
+      case 'nsubedit': { var ek = id + '|' + el.getAttribute('data-s'); M.editSub = ek; M.editText = null; M.focus = '[data-keep="es' + ek + '"]'; render(); return; }
+      case 'nsubeditcancel': M.editSub = null; render(); return;
       case 'nmove': M.move = id; M.moveAt = Date.now(); M.ask = null; render(); return;
       case 'nmoveno': M.move = null; render(); return;
       case 'nmoveyes': {
@@ -544,6 +564,14 @@
       var p = parseDate(raw, M.cat), date = M.pick || p.date, text = p.text || raw;
       addNote(text, M.cat, date); inp.value = ''; M.pick = ''; M.focus = '#nText'; render(); hint();
       say(catInfo(M.cat).label + '에 추가했어요' + (date ? ' · ' + fShort(date) : ''));
+    } else if (f.getAttribute('data-nedit')) {
+      e.preventDefault();
+      var eid = f.getAttribute('data-nedit'), ev = f.querySelector('input').value.trim(); M.editText = null;
+      if (ev) patch(eid, function (n) { n.text = ev; }); else render();
+    } else if (f.getAttribute('data-nsubedit')) {
+      e.preventDefault();
+      var kk = f.getAttribute('data-nsubedit').split('|'), sv = f.querySelector('input').value.trim(); M.editSub = null;
+      if (sv) patch(kk[0], function (n) { n.sub = (n.sub || []).map(function (s) { return s.id === kk[1] ? Object.assign({}, s, { text: sv }) : s; }); }); else render();
     } else if (f.id === 'nDay') {
       e.preventDefault();
       var di = f.querySelector('input'), v = di.value.trim(); if (!v) return;
@@ -595,5 +623,5 @@
     });
   }
 
-  window.Notes = { init: init, sync: sync, live: live1, refresh: refresh, resync: resync, _state: function () { return { N: N, M: M, C: C }; } };
+  window.Notes = { getUI: function () { return JSON.parse(JSON.stringify(N.ui || {})); }, setUI: function (u) { N.ui = u; put('_ui'); }, getTpls: function () { return N.tpls.map(function (t) { return { id: t.id, name: t.name, items: t.items.slice() }; }); }, setTpls: function (a) { N.tpls = a; put('_tpl'); }, init: init, sync: sync, live: live1, refresh: refresh, resync: resync, _state: function () { return { N: N, M: M, C: C }; } };
 })();

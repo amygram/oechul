@@ -193,6 +193,14 @@ i.cdot.dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
 .lcard span{font-size:14px;color:var(--muted)}
 .nday{margin-top:4px}
 .nmoverow{display:flex}
+.titlerow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.uil{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);flex:1}
+#uiForm{flex-direction:column;margin-top:10px}
+.tplbox{background:var(--bg);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.tplhead{display:flex;align-items:center;gap:8px}
+.tplName{font-family:var(--display);font-size:19px;padding:6px 10px}
+.tplItem{border-color:transparent;background:transparent;padding:6px 8px;font-size:16px}
+.tplItem:focus{border-color:var(--line);background:var(--surface)}
 .tcard{background:var(--bg);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
 .thead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .thead strong{font-family:var(--display);font-weight:400;font-size:21px;flex:1;min-width:0}
@@ -205,8 +213,9 @@ i.cdot.dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
 <body>
 <div class="wrap">
   <header>
-    <h1>서윤서아네 외출준비❤️</h1>
-    <p class="sub">나들이·여행 전에 하나씩 동그라미 쳐요</p>
+    <div class="titlerow"><h1 id="appTitle">서윤서아네 외출준비❤️</h1><button class="btn ghost mini" id="uiBtn" type="button" aria-label="제목과 메뉴 이름 고치기">✎ 이름</button></div>
+    <p class="sub" id="appSub">나들이·여행 전에 하나씩 동그라미 쳐요</p>
+    <form class="sheet" id="uiForm" hidden></form>
   </header>
     <p class="note" id="connNote" hidden>인터넷이 끊겨서 아직 못 올린 내용이 있어요. 폰에는 저장돼 있고, 연결되면 자동으로 올라가요.</p>
   <div class="toast" id="toast" hidden><span id="toastMsg"></span><button id="toastBtn" type="button">되돌리기</button></div>
@@ -229,12 +238,7 @@ i.cdot.dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
 <script src="notes.js"></script>
 <script>
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
-const TEMPLATES = {
-  "주말 나들이": ["물병 2개","간식 (과자·과일)","물티슈·손수건","여벌옷 (둘째)","기저귀·팬티","모자","선크림","작은 장난감·스티커북","돗자리","비닐봉투"],
-  "여행": ["여권·신분증","아이 상비약 (해열제·밴드)","여벌옷 3일분","잠옷","칫솔·치약","충전기","수영복·래시가드","물놀이 튜브","애착인형","카시트"],
-  "유치원 소풍": ["도시락","물병","돗자리","물티슈","모자","이름표","간식 (과자 1봉)","여벌 양말"],
-  "빈 목록": []
-};
+const BLANK = "빈 목록";
 const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="#1D2B2C" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const PEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
 const uid = () => Math.random().toString(36).slice(2,10);
@@ -368,13 +372,14 @@ function render(){
   if(needLogin) return;
   if(!loaded){ sheet.innerHTML='<div class="empty"><b>불러오는 중…</b></div>'; return; }
   const order=sorted();
-  if(current!=="new" && current!=="trash" && !cur()){ current = order[0]?.id || "new"; editing=null; }
+  if(current!=="new" && current!=="trash" && current!=="tpl" && !cur()){ current = order[0]?.id || "new"; editing=null; }
   chips.innerHTML = order.map(l=>{
     const dd=dday(l.date); const left=vis(l).filter(i=>!i.done).length;
     return `<button class="chip" data-id="${l.id}" aria-pressed="${l.id===current}">${esc(l.name)}<span class="cnt">${dd&&dd!=="지난 일정"?dd+" · ":""}${left?left+"개 남음":"완료"}</span></button>`;
   }).join("") + `<button class="chip add" data-id="new" aria-pressed="${current==="new"}">+ 새 목록</button>`
     + (trashCount()||current==="trash" ? `<button class="chip trash" data-id="trash" aria-pressed="${current==="trash"}">보관함<span class="cnt">${trashCount()}</span></button>` : "");
   if(current==="trash"){ sheet.dataset.mode="trash"; sheet.innerHTML=trashView(); return; }
+  if(current==="tpl"){ sheet.dataset.mode="tpl"; sheet.innerHTML=tplView(); if(tplFocus){ const f=sheet.querySelector(tplFocus); tplFocus=null; if(f) f.focus(); } return; }
 
   if(current==="new"){
     if(sheet.dataset.mode!=="new"){ sheet.dataset.mode="new"; sheet.innerHTML=newView(); }
@@ -416,6 +421,7 @@ function render(){
   }
   setHTML(sheet.querySelector("#pTools"),`
       ${done?`<button class="btn ghost" data-act="reset">체크 모두 풀기</button>`:""}
+      <button class="btn ghost" data-act="tplFromList">기본 틀로 저장</button>
       <button class="btn ghost" data-act="archive">보관함으로 옮기기</button>`);
 }
 
@@ -457,6 +463,7 @@ function commitName(){
 sheet.addEventListener("click",e=>{
   const el=e.target.closest("[data-act]"); if(!el) return;
   const act=el.dataset.act;
+  if(act.startsWith("tpl")){ tplAct(act,el); return; }
   if(act==="rList"){ restoreList(el.dataset.l); return; }
   if(act==="copy"){ copyList(el.dataset.l); return; }
   if(act==="purgeAsk"){ purgeAsk=el.dataset.k; purgeAt=Date.now(); render(); return; }
@@ -557,19 +564,98 @@ function newView(){
       <label>목록 이름<input id="newName" placeholder="예: 증평 나들이"></label>
       <label>날짜 (선택)<input id="newDate" type="date"></label>
     </div>
-    ${lists.length?`<div class="trashsec"><h3>예전 목록 불러와서 고쳐 쓰기</h3><div class="tpls">${[...lists].sort((a,b)=>(b.order||0)-(a.order||0)).map(l=>`<button class="tpl" data-copy="${l.id}"><strong>${esc(l.name)}</strong><span>${l.date?fmtDate(l.date)+" · ":""}물건 ${vis(l).length}개</span></button>`).join("")}</div></div><h3 style="font-family:var(--display);font-weight:400;font-size:17px;margin:0;color:var(--muted)">기본 틀로 시작하기</h3>`:""}
-    <div class="tpls">${Object.entries(TEMPLATES).map(([k,v])=>`<button class="tpl" data-k="${k}"><strong>${k}</strong><span>${v.length?v.slice(0,3).join(", ")+" 외 "+(v.length-3)+"개":"처음부터 직접 적기"}</span></button>`).join("")}</div>`;
+    ${lists.length?`<div class="trashsec"><h3>예전 목록 불러와서 고쳐 쓰기</h3><div class="tpls">${[...lists].sort((a,b)=>(b.order||0)-(a.order||0)).map(l=>`<button class="tpl" data-copy="${l.id}"><strong>${esc(l.name)}</strong><span>${l.date?fmtDate(l.date)+" · ":""}물건 ${vis(l).length}개</span></button>`).join("")}</div></div>`:""}<h3 style="font-family:var(--display);font-weight:400;font-size:17px;margin:0;color:var(--muted)">기본 틀로 시작하기</h3>
+    <div class="tpls"><button class="tpl" data-k="${BLANK}"><strong>${BLANK}</strong><span>처음부터 직접 적기</span></button>${Notes.getTpls().map(t=>`<button class="tpl" data-t="${esc(t.id)}"><strong>${esc(t.name)}</strong><span>${t.items.length?esc(t.items.slice(0,3).join(", "))+(t.items.length>3?" 외 "+(t.items.length-3)+"개":""):"물건 없음"}</span></button>`).join("")}</div>
+    <button class="btn ghost" data-act="tplEdit">기본 틀 만들기·편집</button>`;
 }
 sheet.addEventListener("click",e=>{
   if(current!=="new") return;
   const b=e.target.closest(".tpl"); if(!b) return;
   if(b.dataset.copy){ copyList(b.dataset.copy, sheet.querySelector("#newName").value.trim(), sheet.querySelector("#newDate").value); return; }
-  const k=b.dataset.k;
-  const name=sheet.querySelector("#newName").value.trim() || (k==="빈 목록"?"새 목록":k);
+  let tname=BLANK, titems=[];
+  if(b.dataset.t){ const T=Notes.getTpls().find(x=>x.id===b.dataset.t); if(!T) return; tname=T.name; titems=T.items; }
+  const name=sheet.querySelector("#newName").value.trim() || (tname===BLANK?"새 목록":tname);
   const l={id:uid(),name,date:sheet.querySelector("#newDate").value||"",order:Date.now(),
-    items:TEMPLATES[k].map(t=>({id:uid(),text:t,done:false}))};
+    items:titems.map(t=>({id:uid(),text:t,done:false}))};
   lists.push(l); current=l.id; render(); save(l);
 });
+/* ---- 제목·메뉴 이름 고치기 ---- */
+const UI_DEF={title:"서윤서아네 외출준비❤️",sub:"나들이·여행 전에 하나씩 동그라미 쳐요",tabs:{today:"오늘",list:"외출준비",cal:"달력",memo:"메모"}};
+function uiNow(){ const u=Notes.getUI(); return {title:u.title||UI_DEF.title, sub:u.sub!=null?u.sub:UI_DEF.sub, tabs:{...UI_DEF.tabs,...Object.fromEntries(Object.entries(u.tabs||{}).filter(([,v])=>v))}}; }
+function applyUI(){
+  const u=uiNow();
+  document.getElementById("appTitle").textContent=u.title; document.getElementById("appSub").textContent=u.sub;
+  document.getElementById("appSub").hidden=!u.sub; document.title=u.title;
+  document.querySelectorAll("#tabs button[data-tab]").forEach(b=>{ b.textContent=u.tabs[b.dataset.tab]; });
+}
+document.getElementById("uiBtn").addEventListener("click",()=>{
+  const f=document.getElementById("uiForm");
+  if(!f.hidden){ f.hidden=true; return; }
+  const u=uiNow();
+  f.innerHTML=`<div class="head"><div><h2>이름 고치기</h2><div class="date">제목과 메뉴 이름을 마음대로 바꿔요</div></div></div>
+    <label class="uil">앱 제목<input name="title" maxlength="30" value="${esc(u.title)}"></label>
+    <label class="uil">설명 (비워도 돼요)<input name="sub" maxlength="40" value="${esc(u.sub)}"></label>
+    <div class="row">${[["today","첫 번째 메뉴"],["list","두 번째 메뉴"],["cal","세 번째 메뉴"],["memo","네 번째 메뉴"]].map(([k,l])=>`<label class="uil" style="min-width:110px">${l}<input name="t_${k}" maxlength="6" value="${esc(u.tabs[k])}"></label>`).join("")}</div>
+    <div class="tools"><button class="btn ghost" type="button" data-ui="reset">처음 이름으로</button><button class="btn ghost" type="button" data-ui="close">닫기</button><button class="btn" type="submit">저장</button></div>`;
+  f.hidden=false;
+});
+document.getElementById("uiForm").addEventListener("click",e=>{
+  const b=e.target.closest("[data-ui]"); if(!b) return; const f=document.getElementById("uiForm");
+  if(b.dataset.ui==="close") f.hidden=true;
+  else if(b.dataset.ui==="reset"){ Notes.setUI({}); applyUI(); f.hidden=true; toast("처음 이름으로 되돌렸어요",()=>{}); document.getElementById("toastBtn").hidden=true; }
+});
+document.getElementById("uiForm").addEventListener("submit",e=>{
+  e.preventDefault(); const f=e.target, g=n=>f.elements[n].value.trim();
+  const tabs={}; ["today","list","cal","memo"].forEach(k=>{ const v=g("t_"+k); if(v&&v!==UI_DEF.tabs[k]) tabs[k]=v; });
+  Notes.setUI({title:g("title")&&g("title")!==UI_DEF.title?g("title"):"",sub:g("sub")===UI_DEF.sub?undefined:g("sub"),tabs});
+  const o=Notes.getUI(); if(!o.title) delete o.title; if(o.sub===undefined) delete o.sub; Notes.setUI(o);
+  applyUI(); f.hidden=true; toast("이름을 바꿨어요",()=>{}); document.getElementById("toastBtn").hidden=true;
+});
+
+/* ---- 기본 틀: 직접 만들고 고치기 ---- */
+let tplAsk=null, tplAt=0, tplFocus=null;
+function tplView(){
+  const T=Notes.getTpls();
+  let h=`<div class="head"><div><h2>기본 틀 편집</h2><div class="date">자주 쓰는 준비물을 틀로 만들어 두면 새 목록에서 한 번에 불러와요</div></div><button class="btn ghost mini" data-act="tplBack">← 돌아가기</button></div>`;
+  h+=T.map(t=>`<div class="tplbox" data-t="${esc(t.id)}"><div class="tplhead"><input class="tplName" value="${esc(t.name)}" maxlength="30" aria-label="틀 이름">${tplAsk===t.id
+      ?`<span class="askdel">지울까요?</span><button class="btn warn mini" data-act="tplDelYes">지우기</button><button class="btn ghost mini" data-act="tplDelNo">취소</button>`
+      :`<button class="del" data-act="tplDel" aria-label="${esc(t.name)} 틀 지우기">×</button>`}</div>
+    <ul>${t.items.map((x,i)=>`<li><input class="tplItem" data-i="${i}" value="${esc(x)}" maxlength="100" aria-label="물건"><button class="del" data-act="tplDelItem" data-i="${i}" aria-label="${esc(x)} 지우기">×</button></li>`).join("")}</ul>
+    <form class="tplItemForm"><input name="x" placeholder="물건 추가 (쉼표로 여러 개)" autocomplete="off" aria-label="물건 추가"><button class="btn mini" type="submit">추가</button></form></div>`).join("")
+    || `<div class="empty"><b>아직 기본 틀이 없어요</b>아래에서 이름을 적어 만들어 보세요</div>`;
+  return h+`<form id="tplNewForm"><input id="tplNewName" placeholder="새 틀 이름 (예: 주말 나들이)" maxlength="30" autocomplete="off" aria-label="새 틀 이름"><button class="btn" type="submit">틀 만들기</button></form>`;
+}
+function tplSet(fn){ const T=Notes.getTpls(); Notes.setTpls(fn(T)||T); render(); }
+function tplAct(act,el){
+  const box=el.closest(".tplbox"), tid=box&&box.dataset.t;
+  if(act==="tplEdit"){ current="tpl"; tplAsk=null; render(); return; }
+  if(act==="tplBack"){ current="new"; render(); return; }
+  if(act==="tplFromList"){ const l=cur(); if(!l) return;
+    const items=vis(l).map(i=>i.text);
+    Notes.setTpls([...Notes.getTpls(),{id:uid(),name:l.name,items}]);
+    toast(`‘${l.name}’을(를) 기본 틀로 저장했어요`,()=>{ Notes.setTpls(Notes.getTpls().slice(0,-1)); }); return; }
+  if(act==="tplDel"){ tplAsk=tid; tplAt=Date.now(); render(); return; }
+  if(act==="tplDelNo"){ tplAsk=null; render(); return; }
+  if(act==="tplDelYes"){ if(Date.now()-tplAt<500) return; tplAsk=null; tplSet(T=>T.filter(t=>t.id!==tid)); return; }
+  if(act==="tplDelItem"){ const i=+el.dataset.i; let gone=null;
+    tplSet(T=>T.map(t=>{ if(t.id!==tid) return t; gone=t.items[i]; return {...t,items:t.items.filter((_,k)=>k!==i)}; }));
+    toast(`‘${gone}’ 지웠어요`,()=>tplSet(T=>T.map(t=>t.id===tid?{...t,items:[...t.items.slice(0,i),gone,...t.items.slice(i)]}:t))); return; }
+}
+sheet.addEventListener("submit",e=>{
+  const f=e.target;
+  if(f.id==="tplNewForm"){ e.preventDefault(); const v=f.querySelector("input").value.trim(); if(!v) return;
+    const id=uid(); tplFocus=`[data-t="${id}"] .tplItemForm input`; tplSet(T=>[...T,{id,name:v,items:[]}]); }
+  else if(f.classList.contains("tplItemForm")){ e.preventDefault(); const tid=f.closest(".tplbox").dataset.t;
+    const names=f.querySelector("input").value.split(/\s*[,，]\s*/).map(x=>x.trim()).filter(Boolean); if(!names.length) return;
+    tplFocus=`[data-t="${tid}"] .tplItemForm input`; tplSet(T=>T.map(t=>t.id===tid?{...t,items:[...t.items,...names]}:t)); }
+});
+sheet.addEventListener("change",e=>{
+  const el=e.target, box=el.closest&&el.closest(".tplbox"); if(!box) return; const tid=box.dataset.t;
+  if(el.classList.contains("tplName")){ const v=el.value.trim(); if(!v){ render(); return; } tplSet(T=>T.map(t=>t.id===tid?{...t,name:v}:t)); }
+  else if(el.classList.contains("tplItem")){ const i=+el.dataset.i, v=el.value.trim();
+    tplSet(T=>T.map(t=>t.id!==tid?t:{...t,items:v?t.items.map((x,k)=>k===i?v:x):t.items.filter((_,k)=>k!==i)})); }
+});
+
 /* ---- 화면 탭: 외출준비 / 달력 / 메모 ---- */
 const tabsEl=document.getElementById("tabs");
 function setTab(t){
@@ -584,7 +670,7 @@ function setTab(t){
 function goList(id){ current=id; confirmDel=false; editing=null; delAsk=null; purgeAsk=null; setTab("list"); render(); window.scrollTo(0,0); }
 tabsEl.addEventListener("click",e=>{ const b=e.target.closest("button[data-tab]"); if(b) setTab(b.dataset.tab); });
 Notes.init();
-setTab("today");
+applyUI(); setTab("today");
 boot();
 </script>
 </body>
