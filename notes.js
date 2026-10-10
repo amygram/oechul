@@ -14,7 +14,7 @@
   var N = { notes: [], cats: DEF.map(cp), pin: '', tpls: [], ui: {} };
   var busy = {}, chain = {}, failed = {};
   var M = { tab: 'all', cat: 'blog', pick: '', composer: false, manage: false, addCat: false, pinMode: '', editDate: null, catPick: null,
-    ask: null, askAt: 0, open: null, editText: null, editSub: null, move: null, moveAt: 0, subFor: null, subAsk: null, subAskAt: 0, showDone: false, armedCat: null, armAt: 0, err: '', focus: null };
+    ask: null, askAt: 0, open: null, editText: null, editSub: null, dup: null, move: null, moveAt: 0, subFor: null, subAsk: null, subAskAt: 0, showDone: false, armedCat: null, armAt: 0, err: '', focus: null };
   var C = { y: 0, m: 0, sel: '', cat: '' };
 
   function today() { var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
@@ -209,6 +209,9 @@
     if (M.subFor === n.id) {
       h += '<form class="nsubform" data-nsub="' + n.id + '"><input data-keep="sub' + n.id + '" placeholder="예) 돗자리, 물통" maxlength="100" autocomplete="off" aria-label="준비물">' +
         '<button class="btn mini" type="submit">추가</button><button class="btn ghost mini" type="button" data-act="nsubclose">닫기</button></form>';
+      if (M.dup && M.dup.id === n.id) {
+        h += '<div class="askbox"><span class="askdel">비슷한 게 이미 있어요: ' + M.dup.hits.map(function (x) { return '‘' + E(x[0]) + '’ ≈ ‘' + E(x[1]) + '’'; }).join(', ') + '<br>그래도 추가할까요?</span><button class="btn mini" data-act="ndupyes" data-n="' + n.id + '">그래도 추가</button><button class="btn ghost mini" data-act="ndupno">취소</button></div>';
+      }
     }
     return h + '</div>';
   }
@@ -356,7 +359,7 @@
       '<button class="btn ghost mini" data-act="golist" data-l="' + l.id + '">열기</button></div>';
     if (v.length) h += '<div class="bar"><i style="width:' + (dn / v.length * 100) + '%"></i></div>';
     if (withItems && v.length) {
-      h += '<ul>' + v.slice().sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0); }).map(function (i) {
+      h += '<ul>' + v.map(function (i) {
         return '<li class="' + (i.done ? 'done' : '') + '"><button class="tick" data-act="ltick" data-l="' + l.id + '" data-i="' + i.id + '" aria-label="' + E(i.text) + ' ' + (i.done ? '체크 해제' : '챙김') + '">' + TICK + '</button><span class="txt">' + E(i.text) + '</span></li>';
       }).join('') + '</ul>';
       if (dn === v.length) h += '<p class="allclear">다 챙겼어요!</p>';
@@ -371,7 +374,7 @@
   function todayHTML() {
     var ts = ymd(today()), L = (typeof lists !== 'undefined' ? lists : []).filter(function (l) { return !l.deletedAt; }), open = unlocked();
     var tl = L.filter(function (l) { return l.date === ts; });
-    var tn = open ? live().filter(function (n) { return n.date === ts; }).sort(function (a, b) { return (a.done - b.done) || byNew(a, b); }) : [];
+    var tn = open ? live().filter(function (n) { return n.date === ts; }).sort(byNew) : [];
     var h = '<div class="head"><div><h2>오늘</h2><div class="date">' + fLong(ts) + '</div></div></div>';
     if (tl.length) h += '<section class="ngroup"><h3>오늘 챙길 외출준비<span class="n">' + tl.length + '개</span></h3>' + tl.map(function (l) { return listCard(l, true); }).join('') + '</section>';
     if (tn.length) h += group('오늘 일정·메모', 'today', tn);
@@ -418,7 +421,7 @@
         var v = (l.items || []).filter(function (i) { return !i.deletedAt; }), dn = v.filter(function (i) { return i.done; }).length;
         return '<button class="lcard" data-act="golist" data-l="' + l.id + '"><strong>' + E(l.name) + '</strong><span>' + (v.length ? dn + ' / ' + v.length + ' 챙김' : '준비물 없음') + '</span></button>';
       }).join('') + '</div>';
-      if (g2.n.length) h += '<ul>' + g2.n.sort(function (a, b) { return (a.done - b.done) || byNew(a, b); }).map(noteLi).join('') + '</ul>';
+      if (g2.n.length) h += '<ul>' + g2.n.sort(byNew).map(noteLi).join('') + '</ul>';
       if (!showNotes) h += '<p class="memo">🔒 메모는 잠겨 있어요. 메모 탭에서 열면 여기에도 보여요.</p>';
       if (!g2.l.length && !g2.n.length && showNotes) h += '<p class="memo">이 날은 적어둔 게 없어요.</p>';
       if (showNotes) {
@@ -539,6 +542,13 @@
       case 'ndateclr': M.editDate = null; patch(id, function (n) { n.date = ''; }); return;
       case 'ndone': M.showDone = !M.showDone; render(); return;
       case 'nsubopen': M.subFor = id; M.focus = '[data-keep="sub' + id + '"]'; render(); return;
+      case 'ndupyes': {
+        if (!M.dup) return; var dn = M.dup.names, did = M.dup.id; M.dup = null;
+        var dinp = document.querySelector('.nsubform[data-nsub="' + did + '"] input'); if (dinp) dinp.value = '';
+        M.focus = '[data-keep="sub' + did + '"]';
+        patch(did, function (n) { n.sub = (n.sub || []).concat(dn.map(function (t) { return { id: newId('s'), text: t, done: false }; })); }); return;
+      }
+      case 'ndupno': M.dup = null; render(); return;
       case 'nsubclose': M.subFor = null; render(); return;
       case 'nsubtick': patch(id, function (n) { n.sub = (n.sub || []).map(function (s) { return s.id === el.getAttribute('data-s') ? Object.assign({}, s, { done: !s.done }) : s; }); }); return;
       case 'nsubdel': { var key = id + '|' + el.getAttribute('data-s'); M.subAsk = M.subAsk === key ? null : key; M.subAskAt = Date.now(); M.ask = null; render(); return; }
@@ -587,7 +597,10 @@
       e.preventDefault();
       var nid = f.getAttribute('data-nsub'), si = f.querySelector('input');
       var names = si.value.split(/\s*[,，]\s*/).map(function (x) { return x.trim(); }).filter(Boolean); if (!names.length) return;
-      si.value = ''; M.focus = '[data-keep="sub' + nid + '"]';
+      var cur0 = (N.notes.filter(function (x) { return x.id === nid; })[0] || {}).sub || [], exist = cur0.map(function (x) { return x.text; }), hits = [];
+      names.forEach(function (nm, i) { var m = similarTo(nm, exist.concat(names.slice(0, i))); if (m) hits.push([nm, m]); });
+      if (hits.length) { M.dup = { id: nid, names: names, hits: hits }; render(); return; }
+      M.dup = null; si.value = ''; M.focus = '[data-keep="sub' + nid + '"]';
       patch(nid, function (n) { n.sub = (n.sub || []).concat(names.map(function (t) { return { id: newId('s'), text: t, done: false }; })); });
     } else if (f.id === 'nUnlock') {
       e.preventDefault();
@@ -611,7 +624,7 @@
       saveCats(function (arr) { return arr.map(function (x) { return x.k === k ? Object.assign({}, x, { label: name }) : x; }); }); say('이름을 바꿨어요');
     }
   }
-  function onInput(e) { if (e.target.id === 'nText') hint(); }
+  function onInput(e) { if (e.target.id === 'nText') hint(); if (M.dup && e.target.closest && e.target.closest('[data-nsub]')) { M.dup = null; render(); } }
   function onKey(e) {
     if (e.key === 'Enter' && e.target.id === 'nCatName') { e.preventDefault(); var b = document.querySelector('[data-act="naddcatok"]'); if (b) b.click(); }
   }

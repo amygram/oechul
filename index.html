@@ -247,6 +247,21 @@ if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catc
 const BLANK = "빈 목록";
 const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="#1D2B2C" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const PEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
+/* 비슷한 이름 찾기: 괄호·숫자·기호를 빼고 같거나, 한쪽이 다른 쪽을 포함하거나, 글자쌍이 많이 겹치면 비슷하다고 본다 */
+function simNorm(s){ return String(s).toLowerCase().replace(/\([^)]*\)|\[[^\]]*\]/g,"").replace(/\d+\s*(개입|개|병|팩|장|벌|켤레|세트|봉)?/g,"").replace(/[^0-9a-z가-힣]/g,""); }
+function similarTo(text,others){
+  const a=simNorm(text); if(!a) return null;
+  const bi=s=>{ const r=[]; for(let i=0;i<s.length-1;i++) r.push(s.slice(i,i+2)); return r; };
+  for(const o of others){
+    const b=simNorm(o); if(!b) continue;
+    if(a===b) return o;
+    const [s,l]=a.length<=b.length?[a,b]:[b,a];
+    if(s.length>=2 && l.includes(s)) return o;
+    if(a.length>=3 && b.length>=3){ const A=bi(a), B=bi(b); let m=0; A.forEach(x=>{ const i=B.indexOf(x); if(i>=0){ m++; B.splice(i,1); } });
+      if(2*m/(A.length+bi(b).length)>=0.6) return o; }
+  }
+  return null;
+}
 const uid = () => Math.random().toString(36).slice(2,10);
 const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
@@ -257,6 +272,7 @@ let confirmDel = false;
 let editing = null;      // item id being edited, or "__name"
 let store = null;
 let confirmAt = 0;
+let dupAsk = null;   // 비슷한 물건이 이미 있을 때 확인 중인 입력
 let delAsk = null, delAt = 0;   // × 눌러서 "지울까요?" 묻는 중인 물건
 let purgeAsk = null, purgeAt = 0;   // 보관함 영구 삭제 확인 중인 항목
 let toastTimer = null;
@@ -396,6 +412,7 @@ function render(){
     sheet.dataset.mode=l.id;
     sheet.innerHTML=`<div class="head" id="pHead"></div><div id="pProg"></div><div id="pItems"></div>
       <form id="addForm"><input id="addInput" placeholder="챙길 물건 (예: 여벌 양말)" autocomplete="off" enterkeyhint="done" aria-label="챙길 물건"><button class="btn" type="submit">추가</button></form>
+      <div id="pDup"></div>
       <div class="tools" id="pTools"></div>`;
   }
   const V=vis(l); const total=V.length, done=V.filter(i=>i.done).length, dd=dday(l.date);
@@ -414,7 +431,7 @@ function render(){
   // 고치는 중이면 목록을 다시 그리지 않는다 (쓰던 글자 보호)
   if(!(editing && editing!=="__name" && l.items.some(i=>i.id===editing))){
     if(editing && editing!=="__name") editing=null;
-    const items=[...V].sort((a,b)=>a.done-b.done);
+    const items=V;
     setHTML(sheet.querySelector("#pItems"), total?`<ul>${items.map(i=>`
       <li class="${i.done?"done":""}${delAsk===i.id?" asking":""}" data-id="${i.id}">
         <button class="tick" data-act="tick" aria-label="${esc(i.text)} ${i.done?"체크 해제":"챙김"}">${TICK}</button>
@@ -425,6 +442,7 @@ function render(){
         <button class="del" data-act="del" aria-label="${esc(i.text)} 지우기">×</button>`}
       </li>`).join("")}</ul>`:`<div class="empty"><b>아직 비어 있어요</b>아래에 챙길 물건을 적어보세요</div>`);
   }
+  setHTML(sheet.querySelector("#pDup"), dupAsk&&dupAsk.l===l.id ? `<div class="askbox"><span class="askdel">비슷한 게 이미 있어요: ‘${esc(dupAsk.m)}’<br>그래도 추가할까요?</span><button class="btn mini" data-act="dupYes">그래도 추가</button><button class="btn ghost mini" data-act="dupNo">취소</button></div>` : "");
   setHTML(sheet.querySelector("#pTools"),`
       ${done?`<button class="btn ghost" data-act="reset">체크 모두 풀기</button>`:""}
       <button class="btn ghost" data-act="tplFromList">기본 틀로 저장</button>
@@ -488,6 +506,8 @@ sheet.addEventListener("click",e=>{
   else if(act==="delNo"){ delAsk=null; render(); }
   else if(act==="delYes" && it){ if(Date.now()-delAt<500) return; delAsk=null; it.deletedAt=Date.now(); render(); save(l);
     toast(`‘${it.text}’ 지웠어요 (보관함에 남아요)`,()=>restoreItem(l.id,it.id)); }
+  else if(act==="dupYes"){ if(!dupAsk) return; const t=dupAsk.t; dupAsk=null; l.items.push({id:uid(),text:t,done:false}); const ai=sheet.querySelector("#addInput"); if(ai) ai.value=""; render(); save(l); }
+  else if(act==="dupNo"){ dupAsk=null; render(); }
   else if(act==="delPurge" && it){ if(Date.now()-delAt<500) return; delAsk=null; l.items=l.items.filter(x=>x.id!==it.id); render(); save(l); toast(`‘${it.text}’ 완전히 삭제했어요`); }
   else if(act==="purgeList"){ if(Date.now()-confirmAt<500) return; confirmDel=false; current=null; lists=lists.filter(x=>x!==l); cacheSave(); render(); store.remove(l.id).catch(()=>{}); toast(`‘${l.name}’ 목록을 완전히 삭제했어요`); }
   else if(act==="edit" && it){ if(editing && editing!==it.id){ editing=null; render(); } const row=sheet.querySelector(`li[data-id="${it.id}"]`); if(row) openEdit(row,it); }
@@ -506,6 +526,7 @@ sheet.addEventListener("click",e=>{
     l.deletedAt=Date.now(); confirmDel=false; current=null; render(); save(l);
     toast(`‘${l.name}’ 목록을 휴지통으로 옮겼어요`,()=>restoreList(l.id)); }
 });
+sheet.addEventListener("input",e=>{ if(e.target.id==="addInput" && dupAsk){ dupAsk=null; render(); } });
 sheet.addEventListener("change",e=>{
   if(e.target.id!=="listDate") return;
   const l=cur(); if(!l) return; l.date=e.target.value; render(); save(l);
@@ -523,7 +544,9 @@ sheet.addEventListener("submit",e=>{
   e.preventDefault();
   const inp=sheet.querySelector("#addInput"); const v=inp.value.trim(); if(!v) return;
   const l=cur(); if(!l) return;
-  l.items.push({id:uid(),text:v,done:false}); inp.value=""; render(); save(l);
+  const m=similarTo(v, vis(l).map(i=>i.text));
+  if(m){ dupAsk={l:l.id,t:v,m}; render(); return; }
+  dupAsk=null; l.items.push({id:uid(),text:v,done:false}); inp.value=""; render(); save(l);
 });
 
 function restoreList(id){
