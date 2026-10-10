@@ -413,7 +413,7 @@ function render(){
   if(sheet.dataset.mode!==l.id){
     sheet.dataset.mode=l.id;
     sheet.innerHTML=`<div class="head" id="pHead"></div><div id="pProg"></div><div id="pItems"></div>
-      <form id="addForm"><input id="addInput" placeholder="챙길 물건 (예: 여벌 양말)" autocomplete="off" enterkeyhint="done" aria-label="챙길 물건"><button class="btn" type="submit">추가</button></form>
+      <form id="addForm"><input id="addInput" placeholder="챙길 물건 (쉼표로 여러 개: 양말, 모자)" autocomplete="off" enterkeyhint="done" aria-label="챙길 물건"><button class="btn" type="submit">추가</button></form>
       <div id="pDup"></div>
       <div class="tools" id="pTools"></div>`;
   }
@@ -444,7 +444,7 @@ function render(){
         <button class="del" data-act="del" aria-label="${esc(i.text)} 지우기">×</button>`}
       </li>`).join("")}</ul>`:`<div class="empty"><b>아직 비어 있어요</b>아래에 챙길 물건을 적어보세요</div>`);
   }
-  setHTML(sheet.querySelector("#pDup"), dupAsk&&dupAsk.l===l.id ? `<div class="askbox"><span class="askdel">비슷한 게 이미 있어요: ‘${esc(dupAsk.m)}’<br>그래도 추가할까요?</span><button class="btn mini" data-act="dupYes">그래도 추가</button><button class="btn ghost mini" data-act="dupNo">취소</button></div>` : "");
+  setHTML(sheet.querySelector("#pDup"), dupAsk&&dupAsk.l===l.id ? `<div class="askbox"><span class="askdel">비슷한 게 이미 있어요: ${dupAsk.hits.map(x=>`‘${esc(x[0])}’ ≈ ‘${esc(x[1])}’`).join(", ")}<br>그래도 추가할까요?</span><button class="btn mini" data-act="dupYes">그래도 추가</button><button class="btn ghost mini" data-act="dupNo">취소</button></div>` : "");
   setHTML(sheet.querySelector("#pTools"),`
       ${done?`<button class="btn ghost" data-act="reset">체크 모두 풀기</button>`:""}
       <button class="btn ghost" data-act="tplFromList">기본 틀로 저장</button>
@@ -508,7 +508,7 @@ sheet.addEventListener("click",e=>{
   else if(act==="delNo"){ delAsk=null; render(); }
   else if(act==="delYes" && it){ if(Date.now()-delAt<500) return; delAsk=null; it.deletedAt=Date.now(); render(); save(l);
     toast(`‘${it.text}’ 지웠어요 (보관함에 남아요)`,()=>restoreItem(l.id,it.id)); }
-  else if(act==="dupYes"){ if(!dupAsk) return; const t=dupAsk.t; dupAsk=null; l.items.push({id:uid(),text:t,done:false}); const ai=sheet.querySelector("#addInput"); if(ai) ai.value=""; render(); save(l); }
+  else if(act==="dupYes"){ if(!dupAsk) return; const nm=dupAsk.names; dupAsk=null; nm.forEach(t=>l.items.push({id:uid(),text:t,done:false})); const ai=sheet.querySelector("#addInput"); if(ai) ai.value=""; render(); save(l); }
   else if(act==="dupNo"){ dupAsk=null; render(); }
   else if(act==="delPurge" && it){ if(Date.now()-delAt<500) return; delAsk=null; l.items=l.items.filter(x=>x.id!==it.id); render(); save(l); toast(`‘${it.text}’ 완전히 삭제했어요`); }
   else if(act==="purgeList"){ if(Date.now()-confirmAt<500) return; confirmDel=false; current=null; lists=lists.filter(x=>x!==l); cacheSave(); render(); store.remove(l.id).catch(()=>{}); toast(`‘${l.name}’ 목록을 완전히 삭제했어요`); }
@@ -546,9 +546,11 @@ sheet.addEventListener("submit",e=>{
   e.preventDefault();
   const inp=sheet.querySelector("#addInput"); const v=inp.value.trim(); if(!v) return;
   const l=cur(); if(!l) return;
-  const m=similarTo(v, vis(l).map(i=>i.text));
-  if(m){ dupAsk={l:l.id,t:v,m}; render(); return; }
-  dupAsk=null; l.items.push({id:uid(),text:v,done:false}); inp.value=""; render(); save(l);
+  const names=v.split(/\s*[,，]\s*/).map(x=>x.trim()).filter(Boolean); if(!names.length) return;
+  const ex=vis(l).map(i=>i.text), hits=[];
+  names.forEach((nm,i)=>{ const m=similarTo(nm, ex.concat(names.slice(0,i))); if(m) hits.push([nm,m]); });
+  if(hits.length){ dupAsk={l:l.id,names,hits}; render(); return; }
+  dupAsk=null; names.forEach(t=>l.items.push({id:uid(),text:t,done:false})); inp.value=""; render(); save(l);
 });
 
 function restoreList(id){
