@@ -112,6 +112,86 @@ li.done .memo{color:var(--done)}
 .head h2{cursor:text}
 .namefield{font-family:var(--display);font-size:20px;padding:6px 10px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---- 화면 탭, 달력, 메모 ---- */
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--line);padding:4px;border-radius:16px}
+.tabs button{border:0;background:transparent;border-radius:12px;min-height:48px;font-family:var(--display);font-size:19px;color:var(--muted)}
+.tabs button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line)}
+.secwrap{display:flex;flex-direction:column;gap:18px}
+:root{--k0f:#3A58A6;--k0b:#E6ECFA;--k1f:#9A5B00;--k1b:#FBEFD8;--k2f:#A8416A;--k2b:#F9E6EE;--k3f:#2A7A55;--k3b:#E2F3EA;--k4f:#6B4BA6;--k4b:#ECE6F8;--k5f:#0A6F80;--k5b:#DDF1F4}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--k0f:#9DB4F2;--k0b:#1D2744;--k1f:#F0B761;--k1b:#3A2A0F;--k2f:#F0A0C0;--k2b:#3A1B2A;--k3f:#7FD1A5;--k3b:#15332A;--k4f:#C3B0F0;--k4b:#2D2347;--k5f:#7FD3E0;--k5b:#123238}}
+:root[data-theme="dark"]{--k0f:#9DB4F2;--k0b:#1D2744;--k1f:#F0B761;--k1b:#3A2A0F;--k2f:#F0A0C0;--k2b:#3A1B2A;--k3f:#7FD1A5;--k3b:#15332A;--k4f:#C3B0F0;--k4b:#2D2347;--k5f:#7FD3E0;--k5b:#123238}
+.k0{--kf:var(--k0f);--kb:var(--k0b)}.k1{--kf:var(--k1f);--kb:var(--k1b)}.k2{--kf:var(--k2f);--kb:var(--k2b)}
+.k3{--kf:var(--k3f);--kb:var(--k3b)}.k4{--kf:var(--k4f);--kb:var(--k4b)}.k5{--kf:var(--k5f);--kb:var(--k5b)}
+.nchips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.nchips.scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.nchip{flex:none;border:2px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font-family:var(--display);font-size:16px;min-height:40px;display:inline-flex;align-items:center;gap:6px;position:relative;overflow:hidden}
+.nchip small{font-family:var(--body);font-size:12px;opacity:.8}
+.nchip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.nchip[class*=" k"][aria-pressed="true"]{background:var(--kb);border-color:var(--kf);color:var(--kf)}
+.nchip.dashed{border-style:dashed;color:var(--ink)}
+.nchip.dashed[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.dpick{position:absolute;inset:0;width:100%;height:100%;opacity:0;padding:0;border:0;font-size:16px;cursor:pointer}
+.newbtn{min-height:52px;border:2px dashed var(--ink);background:transparent;color:var(--ink);border-radius:14px;font-family:var(--display);font-size:18px}
+.ncomp{flex-direction:column;gap:10px;background:var(--bg);padding:12px;border-radius:14px}
+.ncomp .crow{display:flex;gap:8px}
+.ncomp input,.nsubform input{font-size:16px}
+.nsubform{display:flex;gap:6px;align-items:center}
+.nsubform select{font:inherit;font-size:15px;min-height:40px;border:2px solid var(--line);border-radius:12px;background:var(--bg);color:var(--fg);padding-inline:8px}
+.ngroup h3,.nmanage h3,.daytitle{font-family:var(--display);font-weight:400;font-size:19px;margin:0 0 6px;display:flex;gap:8px;align-items:baseline}
+.ngroup h3 .n{font-family:var(--body);font-size:12px;color:var(--muted)}
+.ngroup.soon h3{color:var(--ink)}
+.daytitle{font-size:22px;margin-top:6px}
+.nitem{align-items:flex-start;gap:6px}
+.nitem .tick{margin-top:6px}
+.nbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.nitem .txtwrap{padding-top:8px}
+.nmeta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ntag{border:0;background:var(--kb);color:var(--kf);border-radius:999px;padding:3px 12px;font-size:13px;font-weight:600;min-height:30px}
+.nwhen{border:0;background:transparent;color:var(--muted);font-size:14px;padding:4px 2px;min-height:30px;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;font-variant-numeric:tabular-nums}
+.nwhen.ghost{text-decoration:none;border:1.5px dashed var(--line);border-radius:999px;padding-inline:10px}
+.ndate{flex:none;width:auto;padding:4px 8px;font-size:15px}
+.dday.small{font-size:14px;padding:2px 9px}
+.dday.urgent{background:#FBE0DA;color:var(--danger)}
+.nitem.done .txt{color:var(--done);text-decoration:line-through}
+.subcount{font-size:13px;font-weight:700;color:var(--ink)}
+.nsubs{display:flex;flex-direction:column;gap:2px}
+.nsubhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.nsublist{display:flex;flex-direction:column}
+.nsub{padding:6px 0;gap:8px}
+.tick.small{width:26px;height:26px;border-width:2px}
+.tick.small svg{width:14px;height:14px}
+.nsub.done .txt{color:var(--done);text-decoration:line-through}
+.nsub .txt{font-size:16px;flex:1;min-width:0}
+.ncatlist{display:flex;flex-direction:column}
+.ncatrow{gap:6px;padding:6px 0}
+.cdot{width:16px;height:16px;border-radius:50%;background:var(--kf);display:block;flex:none}
+.cdotbtn{border:0;background:transparent;width:40px;height:40px;display:grid;place-items:center;flex:none}
+.ncatname{flex:1;min-width:0;padding:6px 8px;font-size:16px}
+.ncatname.static{border:0;background:transparent}
+.icon:disabled{opacity:.25}
+.icon.big{width:44px;height:44px;font-size:26px}
+.nmanage{display:flex;flex-direction:column;gap:6px;background:var(--bg);border-radius:14px;padding:12px}
+.calnav{display:flex;align-items:center;gap:4px}
+.calnav h2{flex:1;margin:0;font-family:var(--display);font-weight:400;font-size:24px}
+.cdow,.cdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.cdow span{text-align:center;font-size:13px;color:var(--muted);padding-block:4px}
+.cday{border:0;background:transparent;min-height:56px;display:flex;flex-direction:column;align-items:center;gap:3px;padding-top:4px;border-radius:12px}
+.cday.blank{pointer-events:none}
+.cday .num{width:32px;height:32px;display:grid;place-items:center;border-radius:50%;font-size:16px;font-variant-numeric:tabular-nums}
+.cday.today .num{box-shadow:inset 0 0 0 2px var(--ink);font-weight:700}
+.cday.sel{background:var(--bg)}
+.cday.sel .num{background:var(--ink);color:var(--surface);box-shadow:none;font-weight:700}
+.cdots{display:flex;gap:3px;height:7px}
+.cdot{display:block}
+i.cdot{width:7px;height:7px;border-radius:50%;background:var(--kf)}
+i.cdot.dl{background:var(--sun)}
+i.cdot.dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
+.lcards{display:flex;flex-direction:column;gap:8px}
+.lcard{border:2px solid var(--line);background:var(--bg);border-radius:14px;padding:12px 14px;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.lcard strong{font-family:var(--display);font-weight:400;font-size:19px}
+.lcard span{font-size:14px;color:var(--muted)}
+.nday{margin-top:4px}
 </style>
 
 </head>
@@ -123,11 +203,21 @@ li.done .memo{color:var(--done)}
   </header>
     <p class="note" id="connNote" hidden>인터넷이 끊겨서 아직 못 올린 내용이 있어요. 폰에는 저장돼 있고, 연결되면 자동으로 올라가요.</p>
   <div class="toast" id="toast" hidden><span id="toastMsg"></span><button id="toastBtn" type="button">되돌리기</button></div>
-  <nav class="chips" id="chips" aria-label="목록"></nav>
-  <section class="sheet" id="sheet"><div class="empty"><b>불러오는 중…</b></div></section>
+  <nav class="tabs" id="tabs" aria-label="화면">
+    <button type="button" data-tab="list" aria-pressed="true">외출준비</button>
+    <button type="button" data-tab="cal" aria-pressed="false">달력</button>
+    <button type="button" data-tab="memo" aria-pressed="false">메모</button>
+  </nav>
+  <div id="listSec" class="secwrap">
+    <nav class="chips" id="chips" aria-label="목록"></nav>
+    <section class="sheet" id="sheet"><div class="empty"><b>불러오는 중…</b></div></section>
+  </div>
+  <section class="sheet" id="calSec" hidden></section>
+  <section class="sheet" id="memoSec" hidden></section>
 </div>
 
 <script src="supabase.js"></script>
+<script src="notes.js"></script>
 <script>
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
 const TEMPLATES = {
@@ -153,7 +243,7 @@ let purgeAsk = null, purgeAt = 0;   // 보관함 영구 삭제 확인 중인 항
 let toastTimer = null;
 function toast(msg, undo){
   const t=document.getElementById("toast");
-  document.getElementById("toastMsg").textContent=msg;
+  document.getElementById("toastMsg").textContent=msg; document.getElementById("toastBtn").hidden=false;
   document.getElementById("toastBtn").onclick=()=>{ t.hidden=true; clearTimeout(toastTimer); undo(); };
   t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{ t.hidden=true; },2000);
 }
@@ -185,6 +275,7 @@ async function start(){
   readyResolve();
   await refresh();
   sb.channel("lists-sync").on("postgres_changes",{event:"*",schema:"public",table:"lists"},p=>{
+    if(Notes.live(p)) return;
     const row=p.new; if(!row||!row.id||writes.has(row.id)||failed.has(row.id)) return;
     const inc={id:row.id,...row.data};
     const i=lists.findIndex(x=>x.id===row.id);
@@ -194,18 +285,18 @@ async function start(){
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden) resync(); });
   window.addEventListener("online",resync);
 }
-function resync(){ [...failed].forEach(id=>{ const l=lists.find(x=>x.id===id); if(l) save(l); }); refresh(); }
+function resync(){ Notes.resync(); [...failed].forEach(id=>{ const l=lists.find(x=>x.id===id); if(l) save(l); }); refresh(); }
 async function refresh(){
   const {data,error}=await sb.from("lists").select("id,data");
   if(error){ setNote(true); return; }
   if(!failed.size) setNote(false);
-  const incoming=data.map(r=>{ if(writes.has(r.id)||failed.has(r.id)){ const m=lists.find(x=>x.id===r.id); if(m) return m; } return {id:r.id,...r.data}; });
+  const incoming=Notes.sync(data).map(r=>{ if(writes.has(r.id)||failed.has(r.id)){ const m=lists.find(x=>x.id===r.id); if(m) return m; } return {id:r.id,...r.data}; });
   lists.forEach(l=>{ if((writes.has(l.id)||failed.has(l.id)) && !incoming.some(x=>x.id===l.id)) incoming.push(l); });
   const same=loaded && JSON.stringify(incoming)===JSON.stringify(lists);
   lists=incoming; loaded=true; cacheSave(); if(!same) render();
 }
 function showLogin(){
-  needLogin=true; chips.innerHTML=""; sheet.dataset.mode="login";
+  needLogin=true; chips.innerHTML=""; sheet.dataset.mode="login"; tabsEl.hidden=true; setTab("list");
   sheet.innerHTML=`<div class="head"><div><h2>가족 계정으로 로그인</h2><div class="date">처음 한 번만 하면 돼요</div></div></div>
     <form id="loginForm" class="loginf">
       <input id="lgEmail" type="email" autocomplete="username" placeholder="이메일" aria-label="이메일">
@@ -264,6 +355,7 @@ const sheet=document.getElementById("sheet");
 chips.addEventListener("click",e=>{ const b=e.target.closest(".chip"); if(!b) return; purgeAsk=null; delAsk=null; current=b.dataset.id; confirmDel=false; editing=null; render(); });
 
 function render(){
+  if(window.Notes) Notes.refresh();
   if(needLogin) return;
   if(!loaded){ sheet.innerHTML='<div class="empty"><b>불러오는 중…</b></div>'; return; }
   const order=sorted();
@@ -396,7 +488,7 @@ sheet.addEventListener("submit",async e=>{
   const err=sheet.querySelector("#lgErr"); err.textContent="로그인 중…";
   const {error}=await sb.auth.signInWithPassword({email:sheet.querySelector("#lgEmail").value.trim(),password:sheet.querySelector("#lgPw").value});
   if(error){ err.textContent="이메일이나 비밀번호가 맞지 않아요. 다시 확인해 주세요."; return; }
-  sheet.dataset.mode=""; needLogin=false; loaded=false; render(); start();
+  sheet.dataset.mode=""; needLogin=false; loaded=false; tabsEl.hidden=false; render(); start();
 });
 sheet.addEventListener("submit",e=>{
   if(e.target.id!=="addForm") return;
@@ -469,6 +561,20 @@ sheet.addEventListener("click",e=>{
     items:TEMPLATES[k].map(t=>({id:uid(),text:t,done:false}))};
   lists.push(l); current=l.id; render(); save(l);
 });
+/* ---- 화면 탭: 외출준비 / 달력 / 메모 ---- */
+const tabsEl=document.getElementById("tabs");
+function setTab(t){
+  try{ localStorage.setItem("chaeng-tab",t); }catch(e){}
+  document.getElementById("listSec").hidden=t!=="list";
+  document.getElementById("calSec").hidden=t!=="cal";
+  document.getElementById("memoSec").hidden=t!=="memo";
+  tabsEl.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.tab===t)));
+  if(t!=="list") Notes.refresh();
+}
+function goList(id){ current=id; confirmDel=false; editing=null; delAsk=null; purgeAsk=null; setTab("list"); render(); window.scrollTo(0,0); }
+tabsEl.addEventListener("click",e=>{ const b=e.target.closest("button[data-tab]"); if(b) setTab(b.dataset.tab); });
+Notes.init();
+{ let t="list"; try{ t=localStorage.getItem("chaeng-tab")||"list"; }catch(e){} setTab(["list","cal","memo"].includes(t)?t:"list"); }
 boot();
 </script>
 </body>
