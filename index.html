@@ -216,7 +216,7 @@ li.asking{flex-wrap:wrap}
 <body>
 <div class="wrap">
   <header>
-    <div class="titlerow"><h1 id="appTitle">서윤서아네 외출준비❤️</h1><button class="btn ghost mini" id="uiBtn" type="button" aria-label="제목과 메뉴 이름 고치기">✎ 이름</button></div>
+    <div class="titlerow"><h1 id="appTitle">서윤서아네 외출준비❤️</h1><button class="btn ghost mini" id="uiBtn" type="button" aria-label="메뉴 이름 고치기">✎ 메뉴 이름</button></div>
     <p class="sub" id="appSub">나들이·여행 전에 하나씩 동그라미 쳐요</p>
     <form class="sheet" id="uiForm" hidden></form>
   </header>
@@ -588,7 +588,7 @@ sheet.addEventListener("click",e=>{
 });
 /* ---- 제목·메뉴 이름 고치기 ---- */
 const UI_DEF={title:"서윤서아네 외출준비❤️",sub:"나들이·여행 전에 하나씩 동그라미 쳐요",tabs:{today:"오늘",list:"외출준비",cal:"달력",memo:"메모"}};
-function uiNow(){ const u=Notes.getUI(); return {title:u.title||UI_DEF.title, sub:u.sub!=null?u.sub:UI_DEF.sub, tabs:{...UI_DEF.tabs,...Object.fromEntries(Object.entries(u.tabs||{}).filter(([,v])=>v))}}; }
+function uiNow(){ const u=Notes.getUI(); return {title:UI_DEF.title, sub:UI_DEF.sub, tabs:{...UI_DEF.tabs,...Object.fromEntries(Object.entries(u.tabs||{}).filter(([,v])=>v))}}; }
 function applyUI(){
   const u=uiNow();
   document.getElementById("appTitle").textContent=u.title; document.getElementById("appSub").textContent=u.sub;
@@ -599,9 +599,7 @@ document.getElementById("uiBtn").addEventListener("click",()=>{
   const f=document.getElementById("uiForm");
   if(!f.hidden){ f.hidden=true; return; }
   const u=uiNow();
-  f.innerHTML=`<div class="head"><div><h2>이름 고치기</h2><div class="date">제목과 메뉴 이름을 마음대로 바꿔요</div></div></div>
-    <label class="uil">앱 제목<input name="title" maxlength="30" value="${esc(u.title)}"></label>
-    <label class="uil">설명 (비워도 돼요)<input name="sub" maxlength="40" value="${esc(u.sub)}"></label>
+  f.innerHTML=`<div class="head"><div><h2>이름 고치기</h2><div class="date">메뉴 이름을 바꿔요 (앱 제목은 고정이에요)</div></div></div>
     <div class="row">${[["today","첫 번째 메뉴"],["list","두 번째 메뉴"],["cal","세 번째 메뉴"],["memo","네 번째 메뉴"]].map(([k,l])=>`<label class="uil" style="min-width:110px">${l}<input name="t_${k}" maxlength="6" value="${esc(u.tabs[k])}"></label>`).join("")}</div>
     <div class="tools"><button class="btn ghost" type="button" data-ui="reset">처음 이름으로</button><button class="btn ghost" type="button" data-ui="close">닫기</button><button class="btn" type="submit">저장</button></div>`;
   f.hidden=false;
@@ -614,8 +612,7 @@ document.getElementById("uiForm").addEventListener("click",e=>{
 document.getElementById("uiForm").addEventListener("submit",e=>{
   e.preventDefault(); const f=e.target, g=n=>f.elements[n].value.trim();
   const tabs={}; ["today","list","cal","memo"].forEach(k=>{ const v=g("t_"+k); if(v&&v!==UI_DEF.tabs[k]) tabs[k]=v; });
-  Notes.setUI({title:g("title")&&g("title")!==UI_DEF.title?g("title"):"",sub:g("sub")===UI_DEF.sub?undefined:g("sub"),tabs});
-  const o=Notes.getUI(); if(!o.title) delete o.title; if(o.sub===undefined) delete o.sub; Notes.setUI(o);
+  Notes.setUI({tabs});
   applyUI(); f.hidden=true; toast("이름을 바꿨어요",()=>{}); document.getElementById("toastBtn").hidden=true;
 });
 
