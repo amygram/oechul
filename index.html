@@ -193,6 +193,9 @@ i.cdot.dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
 .lcard span{font-size:14px;color:var(--muted)}
 .nday{margin-top:4px}
 .nmoverow{display:flex}
+li.asking{flex-wrap:wrap}
+.askbox{flex:1 1 100%;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+.askbox .askdel{flex:1 1 100%;text-align:right}
 .titlerow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .uil{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);flex:1}
 #uiForm{flex-direction:column;margin-top:10px}
@@ -256,8 +259,8 @@ let purgeAsk = null, purgeAt = 0;   // 보관함 영구 삭제 확인 중인 항
 let toastTimer = null;
 function toast(msg, undo){
   const t=document.getElementById("toast");
-  document.getElementById("toastMsg").textContent=msg; document.getElementById("toastBtn").hidden=false;
-  document.getElementById("toastBtn").onclick=()=>{ t.hidden=true; clearTimeout(toastTimer); undo(); };
+  document.getElementById("toastMsg").textContent=msg; document.getElementById("toastBtn").hidden=!undo;
+  document.getElementById("toastBtn").onclick=()=>{ t.hidden=true; clearTimeout(toastTimer); if(undo) undo(); };
   t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{ t.hidden=true; },2000);
 }
 
@@ -410,11 +413,11 @@ function render(){
     if(editing && editing!=="__name") editing=null;
     const items=[...V].sort((a,b)=>a.done-b.done);
     setHTML(sheet.querySelector("#pItems"), total?`<ul>${items.map(i=>`
-      <li class="${i.done?"done":""}" data-id="${i.id}">
+      <li class="${i.done?"done":""}${delAsk===i.id?" asking":""}" data-id="${i.id}">
         <button class="tick" data-act="tick" aria-label="${esc(i.text)} ${i.done?"체크 해제":"챙김"}">${TICK}</button>
         <div class="txtwrap" data-act="edit"><span class="txt">${esc(i.text)}</span>${i.memo?`<span class="memo">${esc(i.memo)}</span>`:""}</div>
         ${delAsk===i.id
-          ? `<span class="askdel">지울까요?</span><button class="btn warn mini" data-act="delYes">지우기</button><button class="btn ghost mini" data-act="delNo">취소</button>`
+          ? `<div class="askbox"><span class="askdel">어떻게 할까요?</span><button class="btn mini" data-act="delYes">보관함으로</button><button class="btn warn mini" data-act="delPurge">완전히 삭제</button><button class="btn ghost mini" data-act="delNo">취소</button></div>`
           : `<button class="icon" data-act="edit" aria-label="${esc(i.text)} 고치기">${PEN}</button>
         <button class="del" data-act="del" aria-label="${esc(i.text)} 지우기">×</button>`}
       </li>`).join("")}</ul>`:`<div class="empty"><b>아직 비어 있어요</b>아래에 챙길 물건을 적어보세요</div>`);
@@ -422,7 +425,9 @@ function render(){
   setHTML(sheet.querySelector("#pTools"),`
       ${done?`<button class="btn ghost" data-act="reset">체크 모두 풀기</button>`:""}
       <button class="btn ghost" data-act="tplFromList">기본 틀로 저장</button>
-      <button class="btn ghost" data-act="archive">보관함으로 옮기기</button>`);
+      ${confirmDel
+        ? `<div class="askbox"><span class="askdel">이 목록을 어떻게 할까요?</span><button class="btn mini" data-act="archive">보관함으로 옮기기</button><button class="btn warn mini" data-act="purgeList">완전히 삭제</button><button class="btn ghost mini" data-act="cancelDel">취소</button></div>`
+        : `<button class="btn ghost" data-act="askDel">목록 삭제</button>`}`);
 }
 
 function openEdit(li, item){
@@ -478,6 +483,8 @@ sheet.addEventListener("click",e=>{
   else if(act==="delNo"){ delAsk=null; render(); }
   else if(act==="delYes" && it){ if(Date.now()-delAt<500) return; delAsk=null; it.deletedAt=Date.now(); render(); save(l);
     toast(`‘${it.text}’ 지웠어요 (보관함에 남아요)`,()=>restoreItem(l.id,it.id)); }
+  else if(act==="delPurge" && it){ if(Date.now()-delAt<500) return; delAsk=null; l.items=l.items.filter(x=>x.id!==it.id); render(); save(l); toast(`‘${it.text}’ 완전히 삭제했어요`); }
+  else if(act==="purgeList"){ if(Date.now()-confirmAt<500) return; confirmDel=false; current=null; lists=lists.filter(x=>x!==l); cacheSave(); render(); store.remove(l.id).catch(()=>{}); toast(`‘${l.name}’ 목록을 완전히 삭제했어요`); }
   else if(act==="edit" && it){ if(editing && editing!==it.id){ editing=null; render(); } const row=sheet.querySelector(`li[data-id="${it.id}"]`); if(row) openEdit(row,it); }
   else if(act==="edSave" && li){ commitEdit(li); }
   else if(act==="edCancel"){ cancelEdit(); }
@@ -486,7 +493,7 @@ sheet.addEventListener("click",e=>{
   else if(act==="nmCancel"){ editing=null; render(); }
   else if(act==="clearDate"){ l.date=""; render(); save(l); }
   else if(act==="reset"){ vis(l).forEach(i=>i.done=false); render(); save(l); }
-  else if(act==="archive"){ l.deletedAt=Date.now(); current=null; render(); save(l);
+  else if(act==="archive"){ if(Date.now()-confirmAt<500) return; confirmDel=false; l.deletedAt=Date.now(); current=null; render(); save(l);
     toast(`‘${l.name}’ 보관함으로 옮겼어요`,()=>restoreList(l.id)); }
   else if(act==="askDel"){ confirmDel=true; confirmAt=Date.now(); render(); }
   else if(act==="cancelDel"){ confirmDel=false; render(); }
