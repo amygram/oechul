@@ -14,7 +14,7 @@
   var N = { notes: [], cats: DEF.map(cp), pin: '', tpls: [], ui: {} };
   var busy = {}, chain = {}, failed = {};
   var M = { tab: 'all', cat: 'blog', pick: '', composer: false, manage: false, addCat: false, pinMode: '', editDate: null, catPick: null,
-    ask: null, askAt: 0, open: null, editText: null, editSub: null, dup: null, move: null, moveAt: 0, subFor: null, subAsk: null, subAskAt: 0, showDone: false, armedCat: null, armAt: 0, err: '', focus: null };
+    ask: null, askAt: 0, open: null, editText: null, editSub: null, editNote: null, dup: null, move: null, moveAt: 0, subFor: null, subAsk: null, subAskAt: 0, showDone: false, armedCat: null, armAt: 0, err: '', focus: null };
   var C = { y: 0, m: 0, sel: '', cat: '' };
 
   function today() { var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
@@ -218,12 +218,15 @@
 
   function noteLi(n) {
     var ci = catInfo(n.cat), over = n.date && n.cat !== 'blog' && !n.done ? dd(n.date) : null;
-    var nsub = n.sub || [], isOpen = M.open === n.id || M.subFor === n.id || M.move === n.id || (M.editSub && M.editSub.indexOf(n.id + '|') === 0);
+    var nsub = n.sub || [], isOpen = M.open === n.id || M.editNote === n.id || M.subFor === n.id || M.move === n.id || (M.editSub && M.editSub.indexOf(n.id + '|') === 0);
     var h = '<li class="nitem k' + ci.c + (n.done ? ' done' : '') + '" data-n="' + n.id + '">' +
       '<button class="tick" data-act="ntick" data-n="' + n.id + '" aria-label="' + E(n.text) + ' ' + (n.done ? '체크 해제' : '챙김') + '">' + TICK + '</button>' +
       '<div class="nbody">' + (M.editText === n.id
         ? '<form class="nedit nsubform" data-nedit="' + n.id + '"><input data-keep="et' + n.id + '" value="' + E(n.text) + '" maxlength="300" autocomplete="off" aria-label="내용 고치기"><button class="btn mini" type="submit">저장</button><button class="btn ghost mini" type="button" data-act="neditcancel">취소</button></form>'
-        : '<div class="txtwrap" data-act="nopen" data-n="' + n.id + '"><span class="txt">' + E(n.text) + '</span></div>') + '<div class="nmeta">' +
+        : '<div class="txtwrap" data-act="nopen" data-n="' + n.id + '"><span class="txt">' + E(n.text) + '</span></div>') +
+      (M.editNote === n.id
+        ? '<form class="nnoteedit nsubform" data-nnote="' + n.id + '"><input data-keep="nn' + n.id + '" value="' + E(n.note || '') + '" maxlength="200" placeholder="관련 내용 한 줄 (비우면 지워져요)" autocomplete="off" aria-label="한 줄 메모"><button class="btn mini" type="submit">저장</button><button class="btn ghost mini" type="button" data-act="nnotecancel">취소</button></form>'
+        : (n.note ? '<div class="nnote" data-act="nnote" data-n="' + n.id + '">' + E(n.note) + '</div>' : '')) + '<div class="nmeta">' +
       '<button class="ntag" data-act="ncatpick" data-n="' + n.id + '" aria-label="분류 바꾸기: ' + E(ci.label) + '">' + E(ci.label) + '</button>';
     if (M.editDate === n.id) {
       h += '<input type="date" class="ndate" data-chg="idate" data-n="' + n.id + '" value="' + (n.date || '') + '" aria-label="날짜 바꾸기">' +
@@ -247,10 +250,11 @@
     }
     if (M.move === n.id) {
       var nm = (n.sub || []).length;
-      h += '<div class="confirm moveask"><span>외출준비 목록으로 옮길까요?' + (nm ? ' 준비물 ' + nm + '개가 물건이 돼요.' : '') + ' 이 메모는 없어져요.</span><button class="btn ghost mini" data-act="nmoveno">취소</button><button class="btn mini" data-act="nmoveyes" data-n="' + n.id + '">옮기기</button></div>';
+      h += '<div class="confirm moveask"><span>외출준비 목록으로 옮길까요?' + (nm ? ' 준비물 ' + nm + '개가 물건이 돼요.' : '') + (n.note ? ' 한 줄 메모는 옮겨지지 않아요.' : '') + ' 이 메모는 없어져요.</span><button class="btn ghost mini" data-act="nmoveno">취소</button><button class="btn mini" data-act="nmoveyes" data-n="' + n.id + '">옮기기</button></div>';
     } else if (M.ask !== n.id && isOpen) {
       h += '<div class="nactions"><button class="nact" data-act="nedit" data-n="' + n.id + '" aria-label="' + E(n.text) + ' 고치기">✎ 고치기</button>' +
         (M.subFor === n.id ? '' : '<button class="nact" data-act="nsubopen" data-n="' + n.id + '">+ 준비물</button>') +
+        (M.editNote === n.id ? '' : '<button class="nact" data-act="nnote" data-n="' + n.id + '">' + (n.note ? '✎ 한 줄 메모' : '+ 한 줄 메모') + '</button>') +
         '<button class="nact" data-act="nmove" data-n="' + n.id + '">→ 외출준비로</button><button class="nact" data-act="nopen" data-n="' + n.id + '">접기</button></div>';
     }
     h += '</div>' + (M.ask === n.id ? '' : '<button class="del" data-act="ndel" data-n="' + n.id + '" aria-label="' + E(n.text) + ' 지우기">×</button>') + '</li>';
@@ -517,6 +521,8 @@
       case 'ndelno': M.ask = null; render(); return;
       case 'ndelyes': if (Date.now() - M.askAt < 500) return; M.ask = null; N.notes = N.notes.filter(function (n) { return n.id !== id; }); render(); removeRow(id); return;
       case 'nopen': if (M.open === id) { M.open = null; if (M.subFor === id) M.subFor = null; } else M.open = id; render(); return;
+      case 'nnote': M.editNote = id; M.open = id; M.editText = null; M.focus = '[data-keep="nn' + id + '"]'; render(); return;
+      case 'nnotecancel': M.editNote = null; render(); return;
       case 'nedit': M.editText = id; M.editSub = null; M.focus = '[data-keep="et' + id + '"]'; render(); return;
       case 'neditcancel': M.editText = null; render(); return;
       case 'nsubedit': { var ek = id + '|' + el.getAttribute('data-s'); M.editSub = ek; M.editText = null; M.focus = '[data-keep="es' + ek + '"]'; render(); return; }
@@ -581,6 +587,10 @@
       e.preventDefault();
       var eid = f.getAttribute('data-nedit'), ev = f.querySelector('input').value.trim(); M.editText = null;
       if (ev) patch(eid, function (n) { n.text = ev; }); else render();
+    } else if (f.getAttribute('data-nnote')) {
+      e.preventDefault();
+      var nid2 = f.getAttribute('data-nnote'), nv = f.querySelector('input').value.trim(); M.editNote = null;
+      patch(nid2, function (n) { if (nv) n.note = nv; else delete n.note; });
     } else if (f.getAttribute('data-nsubedit')) {
       e.preventDefault();
       var kk = f.getAttribute('data-nsubedit').split('|'), sv = f.querySelector('input').value.trim(); M.editSub = null;
