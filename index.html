@@ -97,6 +97,7 @@ input{font:inherit;color:var(--fg);background:var(--bg);border:2px solid var(--l
 .trow .ask{flex:1 1 100%;display:flex;gap:6px;justify-content:flex-end;align-items:center;font-size:14px;color:var(--danger)}
 .loginf{flex-direction:column}
 .loginf .btn{align-self:stretch}
+.askdel{flex:none;font-size:14px;color:var(--danger)}
 .allclear{font-family:var(--display);color:var(--ink);text-align:center;font-size:18px}
 .txtwrap{flex:1;min-width:0;display:flex;flex-direction:column;cursor:text}
 .memo{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
@@ -146,13 +147,14 @@ let confirmDel = false;
 let editing = null;      // item id being edited, or "__name"
 let store = null;
 let confirmAt = 0;
+let delAsk = null, delAt = 0;   // × 눌러서 "지울까요?" 묻는 중인 물건
 let purgeAsk = null, purgeAt = 0;   // 보관함 영구 삭제 확인 중인 항목
 let toastTimer = null;
 function toast(msg, undo){
   const t=document.getElementById("toast");
   document.getElementById("toastMsg").textContent=msg;
   document.getElementById("toastBtn").onclick=()=>{ t.hidden=true; clearTimeout(toastTimer); undo(); };
-  t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{ t.hidden=true; },3000);
+  t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{ t.hidden=true; },2000);
 }
 
 /* ---- storage: Supabase (가족 계정) + 폰 안 캐시 ---- */
@@ -258,7 +260,7 @@ function sorted(){
 function setHTML(el,html){ if(el._h!==html){ el.innerHTML=html; el._h=html; } }
 const chips=document.getElementById("chips");
 const sheet=document.getElementById("sheet");
-chips.addEventListener("click",e=>{ const b=e.target.closest(".chip"); if(!b) return; purgeAsk=null; current=b.dataset.id; confirmDel=false; editing=null; render(); });
+chips.addEventListener("click",e=>{ const b=e.target.closest(".chip"); if(!b) return; purgeAsk=null; delAsk=null; current=b.dataset.id; confirmDel=false; editing=null; render(); });
 
 function render(){
   if(needLogin) return;
@@ -304,8 +306,10 @@ function render(){
       <li class="${i.done?"done":""}" data-id="${i.id}">
         <button class="tick" data-act="tick" aria-label="${esc(i.text)} ${i.done?"체크 해제":"챙김"}">${TICK}</button>
         <div class="txtwrap" data-act="edit"><span class="txt">${esc(i.text)}</span>${i.memo?`<span class="memo">${esc(i.memo)}</span>`:""}</div>
-        <button class="icon" data-act="edit" aria-label="${esc(i.text)} 고치기">${PEN}</button>
-        <button class="del" data-act="del" aria-label="${esc(i.text)} 지우기">×</button>
+        ${delAsk===i.id
+          ? `<span class="askdel">지울까요?</span><button class="btn warn mini" data-act="delYes">지우기</button><button class="btn ghost mini" data-act="delNo">취소</button>`
+          : `<button class="icon" data-act="edit" aria-label="${esc(i.text)} 고치기">${PEN}</button>
+        <button class="del" data-act="del" aria-label="${esc(i.text)} 지우기">×</button>`}
       </li>`).join("")}</ul>`:`<div class="empty"><b>아직 비어 있어요</b>아래에 챙길 물건을 적어보세요</div>`);
   }
   setHTML(sheet.querySelector("#pTools"),`
@@ -361,7 +365,9 @@ sheet.addEventListener("click",e=>{
   const l=cur(); if(!l) return;
   const li=el.closest("li"); const it=li && l.items.find(i=>i.id===li.dataset.id);
   if(act==="tick" && it){ it.done=!it.done; render(); save(l); }
-  else if(act==="del" && it){ it.deletedAt=Date.now(); render(); save(l);
+  else if(act==="del" && it){ delAsk=it.id; delAt=Date.now(); render(); }
+  else if(act==="delNo"){ delAsk=null; render(); }
+  else if(act==="delYes" && it){ if(Date.now()-delAt<500) return; delAsk=null; it.deletedAt=Date.now(); render(); save(l);
     toast(`‘${it.text}’ 지웠어요 (보관함에 남아요)`,()=>restoreItem(l.id,it.id)); }
   else if(act==="edit" && it){ if(editing && editing!==it.id){ editing=null; render(); } const row=sheet.querySelector(`li[data-id="${it.id}"]`); if(row) openEdit(row,it); }
   else if(act==="edSave" && li){ commitEdit(li); }
