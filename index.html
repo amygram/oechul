@@ -114,8 +114,8 @@ li.done .memo{color:var(--done)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
 /* ---- 화면 탭, 달력, 메모 ---- */
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--line);padding:4px;border-radius:16px}
-.tabs button{border:0;background:transparent;border-radius:12px;min-height:48px;font-family:var(--display);font-size:19px;color:var(--muted)}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--line);padding:4px;border-radius:16px}
+.tabs button{border:0;background:transparent;border-radius:12px;min-height:48px;font-family:var(--display);font-size:17px;color:var(--muted);padding-inline:2px}
 .tabs button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line)}
 .secwrap{display:flex;flex-direction:column;gap:18px}
 :root{--k0f:#3A58A6;--k0b:#E6ECFA;--k1f:#9A5B00;--k1b:#FBEFD8;--k2f:#A8416A;--k2b:#F9E6EE;--k3f:#2A7A55;--k3b:#E2F3EA;--k4f:#6B4BA6;--k4b:#ECE6F8;--k5f:#0A6F80;--k5b:#DDF1F4}
@@ -193,6 +193,12 @@ i.cdot.dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
 .lcard span{font-size:14px;color:var(--muted)}
 .nday{margin-top:4px}
 .nmoverow{display:flex}
+.tcard{background:var(--bg);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.thead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.thead strong{font-family:var(--display);font-weight:400;font-size:21px;flex:1;min-width:0}
+.prog2{font-size:14px;color:var(--muted)}
+.soonlist .soonrow{gap:8px;flex-wrap:wrap}
+.soonrow .txt{flex:1;min-width:0}
 </style>
 
 </head>
@@ -205,14 +211,16 @@ i.cdot.dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
     <p class="note" id="connNote" hidden>인터넷이 끊겨서 아직 못 올린 내용이 있어요. 폰에는 저장돼 있고, 연결되면 자동으로 올라가요.</p>
   <div class="toast" id="toast" hidden><span id="toastMsg"></span><button id="toastBtn" type="button">되돌리기</button></div>
   <nav class="tabs" id="tabs" aria-label="화면">
-    <button type="button" data-tab="list" aria-pressed="true">외출준비</button>
+    <button type="button" data-tab="today" aria-pressed="true">오늘</button>
+    <button type="button" data-tab="list" aria-pressed="false">외출준비</button>
     <button type="button" data-tab="cal" aria-pressed="false">달력</button>
     <button type="button" data-tab="memo" aria-pressed="false">메모</button>
   </nav>
-  <div id="listSec" class="secwrap">
+  <div id="listSec" class="secwrap" hidden>
     <nav class="chips" id="chips" aria-label="목록"></nav>
     <section class="sheet" id="sheet"><div class="empty"><b>불러오는 중…</b></div></section>
   </div>
+  <section class="sheet" id="todaySec"></section>
   <section class="sheet" id="calSec" hidden></section>
   <section class="sheet" id="memoSec" hidden></section>
 </div>
@@ -567,6 +575,7 @@ const tabsEl=document.getElementById("tabs");
 function setTab(t){
   try{ localStorage.setItem("chaeng-tab",t); }catch(e){}
   document.getElementById("listSec").hidden=t!=="list";
+  document.getElementById("todaySec").hidden=t!=="today";
   document.getElementById("calSec").hidden=t!=="cal";
   document.getElementById("memoSec").hidden=t!=="memo";
   tabsEl.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.tab===t)));
@@ -575,7 +584,7 @@ function setTab(t){
 function goList(id){ current=id; confirmDel=false; editing=null; delAsk=null; purgeAsk=null; setTab("list"); render(); window.scrollTo(0,0); }
 tabsEl.addEventListener("click",e=>{ const b=e.target.closest("button[data-tab]"); if(b) setTab(b.dataset.tab); });
 Notes.init();
-{ let t="list"; try{ t=localStorage.getItem("chaeng-tab")||"list"; }catch(e){} setTab(["list","cal","memo"].includes(t)?t:"list"); }
+setTab("today");
 boot();
 </script>
 </body>

@@ -179,7 +179,7 @@
   /* ---------- 그리기 ---------- */
   function kcls(k) { return 'k' + catInfo(k).c; }
   function tabNow() { try { return localStorage.getItem('chaeng-tab') || 'list'; } catch (e) { return 'list'; } }
-  function root(t) { return document.getElementById(t === 'cal' ? 'calSec' : 'memoSec'); }
+  function root(t) { return document.getElementById(t === 'cal' ? 'calSec' : t === 'today' ? 'todaySec' : 'memoSec'); }
 
   function subBlock(n) {
     var subs = n.sub || [], done = subs.filter(function (s) { return s.done; }).length;
@@ -330,6 +330,45 @@
     return h;
   }
 
+
+  /* ---------- 오늘: 그날 챙길 것을 한 화면에 ---------- */
+  function listCard(l, withItems) {
+    var v = (l.items || []).filter(function (i) { return !i.deletedAt; }), dn = v.filter(function (i) { return i.done; }).length;
+    var h = '<div class="tcard"><div class="thead"><strong>' + E(l.name) + '</strong><span class="prog2">' + (v.length ? dn + ' / ' + v.length + ' 챙김' : '준비물 없음') + '</span>' +
+      '<button class="btn ghost mini" data-act="golist" data-l="' + l.id + '">열기</button></div>';
+    if (v.length) h += '<div class="bar"><i style="width:' + (dn / v.length * 100) + '%"></i></div>';
+    if (withItems && v.length) {
+      h += '<ul>' + v.slice().sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0); }).map(function (i) {
+        return '<li class="' + (i.done ? 'done' : '') + '"><button class="tick" data-act="ltick" data-l="' + l.id + '" data-i="' + i.id + '" aria-label="' + E(i.text) + ' ' + (i.done ? '체크 해제' : '챙김') + '">' + TICK + '</button><span class="txt">' + E(i.text) + '</span></li>';
+      }).join('') + '</ul>';
+      if (dn === v.length) h += '<p class="allclear">다 챙겼어요!</p>';
+    }
+    return h + '</div>';
+  }
+  function soonRow(it) {
+    var n = dd(it.date);
+    return '<li class="soonrow"><span class="dday small' + (n <= 1 ? ' urgent' : '') + '">' + (n === 0 ? '오늘' : n > 0 ? 'D-' + n : Math.abs(n) + '일 지남') + '</span><span class="txt">' + E(it.name || it.text) + '</span><span class="memo">' + fShort(it.date) + (it.kind ? ' · ' + E(it.kind) : '') + '</span>' +
+      (it.listId ? '<button class="btn ghost mini" data-act="golist" data-l="' + it.listId + '">열기</button>' : '') + '</li>';
+  }
+  function todayHTML() {
+    var ts = ymd(today()), L = (typeof lists !== 'undefined' ? lists : []).filter(function (l) { return !l.deletedAt; }), open = unlocked();
+    var tl = L.filter(function (l) { return l.date === ts; });
+    var tn = open ? live().filter(function (n) { return n.date === ts; }).sort(function (a, b) { return (a.done - b.done) || byNew(a, b); }) : [];
+    var h = '<div class="head"><div><h2>오늘</h2><div class="date">' + fLong(ts) + '</div></div></div>';
+    if (tl.length) h += '<section class="ngroup"><h3>오늘 챙길 외출준비<span class="n">' + tl.length + '개</span></h3>' + tl.map(function (l) { return listCard(l, true); }).join('') + '</section>';
+    if (tn.length) h += group('오늘 일정·메모', 'today', tn);
+    if (!tl.length && !tn.length) h += '<div class="empty"><b>오늘은 챙길 게 없어요</b>날짜를 오늘로 넣어 둔 목록과 메모가 여기에 모여요.</div>';
+    if (!open) h += '<p class="memo">🔒 메모는 잠겨 있어요. 메모 탭에서 열면 여기에도 보여요.</p>';
+    var soon = [];
+    L.forEach(function (l) { if (l.date) { var n = dd(l.date); if (n >= 1 && n <= 7) soon.push({ date: l.date, name: l.name, listId: l.id, kind: '외출준비' }); } });
+    if (open) live().forEach(function (n) { if (n.done || !n.date || n.cat === 'blog') return; var k = dd(n.date); if (k >= 1 && k <= 7) soon.push({ date: n.date, text: n.text, kind: catInfo(n.cat).label }); });
+    soon.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    if (soon.length) h += '<section class="ngroup"><h3>이번 주 다가오는 것<span class="n">' + soon.length + '개</span></h3><ul class="soonlist">' + soon.map(soonRow).join('') + '</ul></section>';
+    var late = open ? live().filter(function (n) { return !n.done && n.date && n.cat !== 'blog' && dd(n.date) < 0 && dd(n.date) >= -30; }).sort(byDate) : [];
+    if (late.length) h += group('놓친 것 (최근 30일)', 'late', late);
+    return h;
+  }
+
   /* ---------- 달력 ---------- */
   function calHTML() {
     var y = C.y, m = C.m, h = '<div class="calnav"><h2>' + y + '년 ' + (m + 1) + '월</h2><button class="btn ghost mini" data-act="ctoday">오늘</button>' +
@@ -395,7 +434,8 @@
   function render() {
     if ((typeof needLogin !== 'undefined' && needLogin)) return;
     var t = tabNow();
-    if (t === 'memo') { var el = root('memo'); if (el) { paint(el, memoHTML()); hint(); } }
+    if (t === 'today') { var te = root('today'); if (te) paint(te, todayHTML()); }
+    else if (t === 'memo') { var el = root('memo'); if (el) { paint(el, memoHTML()); hint(); } }
     else if (t === 'cal') {
       var c = root('cal');
       if (c) {
@@ -405,6 +445,7 @@
     }
   }
   function refresh() { render(); }
+  function render_() { if (typeof render === 'function' && window.render) window.render(); else refresh(); }
 
   /* ---------- 동작 ---------- */
   function addNote(text, cat, date) {
@@ -487,6 +528,11 @@
       case 'cnext': { var d2 = new Date(C.y, C.m + 1, 1); C.y = d2.getFullYear(); C.m = d2.getMonth(); C.sel = ''; render(); return; }
       case 'ctoday': { var t0 = today(); C.y = t0.getFullYear(); C.m = t0.getMonth(); C.sel = ymd(t0); render(); return; }
       case 'cday': C.sel = C.sel === el.getAttribute('data-d') ? '' : el.getAttribute('data-d'); render(); return;
+      case 'ltick': {
+        var tl2 = lists.filter(function (x) { return x.id === el.getAttribute('data-l'); })[0]; if (!tl2) return;
+        var ti = tl2.items.filter(function (x) { return x.id === el.getAttribute('data-i'); })[0]; if (!ti) return;
+        ti.done = !ti.done; render_(); save(tl2); return;
+      }
       case 'golist': if (window.goList) window.goList(el.getAttribute('data-l')); return;
     }
   }
@@ -541,7 +587,8 @@
 
   function init() {
     loadCache();
-    ['memoSec', 'calSec'].forEach(function (id) {
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
+    ['memoSec', 'calSec', 'todaySec'].forEach(function (id) {
       var el = document.getElementById(id); if (!el) return;
       el.addEventListener('click', onClick); el.addEventListener('submit', onSubmit); el.addEventListener('change', onChange);
       el.addEventListener('input', onInput); el.addEventListener('keydown', onKey);
