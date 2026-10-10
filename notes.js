@@ -13,7 +13,7 @@
   var N = { notes: [], cats: DEF.map(cp), pin: '' };
   var busy = {}, chain = {}, failed = {};
   var M = { tab: 'all', cat: 'blog', pick: '', composer: false, manage: false, addCat: false, pinMode: '', editDate: null, catPick: null,
-    ask: null, askAt: 0, subFor: null, subAsk: null, subAskAt: 0, showDone: false, armedCat: null, armAt: 0, err: '', focus: null };
+    ask: null, askAt: 0, move: null, moveAt: 0, subFor: null, subAsk: null, subAskAt: 0, showDone: false, armedCat: null, armAt: 0, err: '', focus: null };
   var C = { y: 0, m: 0, sel: '', cat: '' };
 
   function today() { var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
@@ -225,6 +225,12 @@
     if (M.ask === n.id) {
       var ns = (n.sub || []).length;
       h += '<div class="confirm"><span>' + (ns ? '이 메모와 준비물 ' + ns + '개를 지울까요?' : '이 메모를 지울까요?') + '</span><button class="btn ghost mini" data-act="ndelno">취소</button><button class="btn warn mini" data-act="ndelyes" data-n="' + n.id + '">지우기</button></div>';
+    }
+    if (M.move === n.id) {
+      var nm = (n.sub || []).length;
+      h += '<div class="confirm moveask"><span>외출준비 목록으로 옮길까요?' + (nm ? ' 준비물 ' + nm + '개가 물건이 돼요.' : '') + ' 이 메모는 없어져요.</span><button class="btn ghost mini" data-act="nmoveno">취소</button><button class="btn mini" data-act="nmoveyes" data-n="' + n.id + '">옮기기</button></div>';
+    } else if (M.ask !== n.id) {
+      h += '<div class="nmoverow"><button class="btn ghost mini" data-act="nmove" data-n="' + n.id + '">외출준비 목록으로 옮기기</button></div>';
     }
     h += '</div>' + (M.ask === n.id ? '' : '<button class="del" data-act="ndel" data-n="' + n.id + '" aria-label="' + E(n.text) + ' 지우기">×</button>') + '</li>';
     return h;
@@ -448,6 +454,19 @@
       case 'ndel': M.ask = id; M.askAt = Date.now(); M.subAsk = null; render(); return;
       case 'ndelno': M.ask = null; render(); return;
       case 'ndelyes': if (Date.now() - M.askAt < 500) return; M.ask = null; N.notes = N.notes.filter(function (n) { return n.id !== id; }); render(); removeRow(id); return;
+      case 'nmove': M.move = id; M.moveAt = Date.now(); M.ask = null; render(); return;
+      case 'nmoveno': M.move = null; render(); return;
+      case 'nmoveyes': {
+        if (Date.now() - M.moveAt < 500) return;
+        var mn = N.notes.filter(function (x) { return x.id === id; })[0]; M.move = null; if (!mn) { render(); return; }
+        var nl = { id: uid(), name: mn.text, date: mn.date || '', order: Date.now(),
+          items: (mn.sub || []).map(function (s) { return { id: uid(), text: s.text, done: !!s.done }; }) };
+        lists.push(nl); save(nl);
+        N.notes = N.notes.filter(function (x) { return x.id !== id; }); removeRow(id);
+        say('외출준비 목록으로 옮겼어요');
+        if (window.goList) window.goList(nl.id); else render();
+        return;
+      }
       case 'ncatpick': M.catPick = M.catPick === id ? null : id; M.editDate = null; render(); return;
       case 'ncatclose': M.catPick = null; render(); return;
       case 'nsetcat': M.catPick = null; patch(id, function (n) { n.cat = k; }); return;
