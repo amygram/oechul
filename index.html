@@ -125,7 +125,7 @@ li.done .memo{color:var(--done)}
   <section class="sheet" id="sheet"><div class="empty"><b>불러오는 중…</b></div></section>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="supabase.js"></script>
 <script>
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
 const TEMPLATES = {
@@ -166,7 +166,7 @@ function cacheSave(){ try{ localStorage.setItem(CACHE,JSON.stringify(lists)); }c
 function setNote(on){ document.getElementById("connNote").hidden=!on; }
 async function boot(){
   try{ const c=JSON.parse(localStorage.getItem(CACHE)); if(Array.isArray(c)){ lists=c; loaded=true; } }catch(e){}
-  if(!window.supabase){ setNote(true); render(); return; }
+  if(!window.supabase){ if(loaded) render(); else sheet.innerHTML='<div class="empty"><b>앱을 다 불러오지 못했어요</b>새로고침해 주세요</div>'; setNote(true); return; }
   sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
   const {data:{session}}=await sb.auth.getSession();
   if(!session){ showLogin(); return; }
