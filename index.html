@@ -224,8 +224,8 @@ li.asking{flex-wrap:wrap}
   <div class="toast" id="toast" hidden><span id="toastMsg"></span><button id="toastBtn" type="button">되돌리기</button></div>
   <nav class="tabs" id="tabs" aria-label="화면">
     <button type="button" data-tab="today" aria-pressed="true">오늘</button>
-    <button type="button" data-tab="list" aria-pressed="false">외출준비</button>
     <button type="button" data-tab="cal" aria-pressed="false">달력</button>
+    <button type="button" data-tab="list" aria-pressed="false">외출준비</button>
     <button type="button" data-tab="memo" aria-pressed="false">메모</button>
   </nav>
   <div id="listSec" class="secwrap" hidden>
@@ -368,7 +368,7 @@ function sorted(){
 function setHTML(el,html){ if(el._h!==html){ el.innerHTML=html; el._h=html; } }
 const chips=document.getElementById("chips");
 const sheet=document.getElementById("sheet");
-chips.addEventListener("click",e=>{ const b=e.target.closest(".chip"); if(!b) return; purgeAsk=null; delAsk=null; current=b.dataset.id; confirmDel=false; editing=null; render(); });
+chips.addEventListener("click",e=>{ const b=e.target.closest(".chip"); if(!b) return; oldOpen=false; purgeAsk=null; delAsk=null; current=b.dataset.id; confirmDel=false; editing=null; render(); });
 
 function render(){
   if(window.Notes) Notes.refresh();
@@ -469,6 +469,8 @@ sheet.addEventListener("click",e=>{
   const el=e.target.closest("[data-act]"); if(!el) return;
   const act=el.dataset.act;
   if(act.startsWith("tpl")){ tplAct(act,el); return; }
+  if(act==="oldToggle"){ const nm=sheet.querySelector("#newName").value, dt=sheet.querySelector("#newDate").value;
+    oldOpen=!oldOpen; sheet.dataset.mode=""; render(); sheet.querySelector("#newName").value=nm; sheet.querySelector("#newDate").value=dt; return; }
   if(act==="rList"){ restoreList(el.dataset.l); return; }
   if(act==="copy"){ copyList(el.dataset.l); return; }
   if(act==="purgeAsk"){ purgeAsk=el.dataset.k; purgeAt=Date.now(); render(); return; }
@@ -571,7 +573,7 @@ function newView(){
       <label>목록 이름<input id="newName" placeholder="예: 증평 나들이"></label>
       <label>날짜 (선택)<input id="newDate" type="date"></label>
     </div>
-    ${lists.length?`<div class="trashsec"><h3>예전 목록 불러와서 고쳐 쓰기</h3><div class="tpls">${[...lists].sort((a,b)=>(b.order||0)-(a.order||0)).map(l=>`<button class="tpl" data-copy="${l.id}"><strong>${esc(l.name)}</strong><span>${l.date?fmtDate(l.date)+" · ":""}물건 ${vis(l).length}개</span></button>`).join("")}</div></div>`:""}<h3 style="font-family:var(--display);font-weight:400;font-size:17px;margin:0;color:var(--muted)">기본 틀로 시작하기</h3>
+    ${lists.length?`<div class="trashsec"><button class="btn ghost" data-act="oldToggle" aria-expanded="${oldOpen}">예전 목록 불러와서 고쳐 쓰기 ${oldOpen?"▲":"▼"}</button>${oldOpen?`<div class="tpls">${[...lists].sort((a,b)=>(b.order||0)-(a.order||0)).map(l=>`<button class="tpl" data-copy="${l.id}"><strong>${esc(l.name)}</strong><span>${l.date?fmtDate(l.date)+" · ":""}물건 ${vis(l).length}개</span></button>`).join("")}</div>`:""}</div>`:""}<h3 style="font-family:var(--display);font-weight:400;font-size:17px;margin:0;color:var(--muted)">기본 틀로 시작하기</h3>
     <div class="tpls"><button class="tpl" data-k="${BLANK}"><strong>${BLANK}</strong><span>처음부터 직접 적기</span></button>${Notes.getTpls().map(t=>`<button class="tpl" data-t="${esc(t.id)}"><strong>${esc(t.name)}</strong><span>${t.items.length?esc(t.items.slice(0,3).join(", "))+(t.items.length>3?" 외 "+(t.items.length-3)+"개":""):"물건 없음"}</span></button>`).join("")}</div>
     <button class="btn ghost" data-act="tplEdit">기본 틀 만들기·편집</button>`;
 }
@@ -600,7 +602,7 @@ document.getElementById("uiBtn").addEventListener("click",()=>{
   if(!f.hidden){ f.hidden=true; return; }
   const u=uiNow();
   f.innerHTML=`<div class="head"><div><h2>이름 고치기</h2><div class="date">메뉴 이름을 바꿔요 (앱 제목은 고정이에요)</div></div></div>
-    <div class="row">${[["today","첫 번째 메뉴"],["list","두 번째 메뉴"],["cal","세 번째 메뉴"],["memo","네 번째 메뉴"]].map(([k,l])=>`<label class="uil" style="min-width:110px">${l}<input name="t_${k}" maxlength="6" value="${esc(u.tabs[k])}"></label>`).join("")}</div>
+    <div class="row">${[["today","첫 번째 메뉴"],["cal","두 번째 메뉴"],["list","세 번째 메뉴"],["memo","네 번째 메뉴"]].map(([k,l])=>`<label class="uil" style="min-width:110px">${l}<input name="t_${k}" maxlength="6" value="${esc(u.tabs[k])}"></label>`).join("")}</div>
     <div class="tools"><button class="btn ghost" type="button" data-ui="reset">처음 이름으로</button><button class="btn ghost" type="button" data-ui="close">닫기</button><button class="btn" type="submit">저장</button></div>`;
   f.hidden=false;
 });
@@ -617,6 +619,7 @@ document.getElementById("uiForm").addEventListener("submit",e=>{
 });
 
 /* ---- 기본 틀: 직접 만들고 고치기 ---- */
+let oldOpen=false;
 let tplAsk=null, tplAt=0, tplFocus=null;
 function tplView(){
   const T=Notes.getTpls();
