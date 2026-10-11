@@ -230,7 +230,7 @@ li.asking{flex-wrap:wrap}
   <nav class="tabs" id="tabs" aria-label="화면">
     <button type="button" data-tab="today" aria-pressed="true">오늘</button>
     <button type="button" data-tab="cal" aria-pressed="false">달력</button>
-    <button type="button" data-tab="list" aria-pressed="false">외출준비</button>
+    <button type="button" data-tab="list" aria-pressed="false">챙길 것</button>
     <button type="button" data-tab="memo" aria-pressed="false">메모</button>
   </nav>
   <div id="listSec" class="secwrap" hidden>
@@ -617,7 +617,7 @@ sheet.addEventListener("click",e=>{
   lists.push(l); current=l.id; render(); save(l);
 });
 /* ---- 제목·메뉴 이름 고치기 ---- */
-const UI_DEF={title:"서윤서아네 외출준비❤️",sub:"나들이·여행 전에 하나씩 동그라미 쳐요",tabs:{today:"오늘",list:"외출준비",cal:"달력",memo:"메모"}};
+const UI_DEF={title:"서윤서아네 외출준비❤️",sub:"나들이·여행 전에 하나씩 동그라미 쳐요",tabs:{today:"오늘",list:"챙길 것",cal:"달력",memo:"메모"}};
 function uiNow(){ const u=Notes.getUI(); return {title:UI_DEF.title, sub:UI_DEF.sub, tabs:{...UI_DEF.tabs,...Object.fromEntries(Object.entries(u.tabs||{}).filter(([,v])=>v))}}; }
 function applyUI(){
   const u=uiNow();

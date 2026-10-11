@@ -250,12 +250,12 @@
     }
     if (M.move === n.id) {
       var nm = (n.sub || []).length;
-      h += '<div class="confirm moveask"><span>외출준비 목록으로 옮길까요?' + (nm ? ' 준비물 ' + nm + '개가 물건이 돼요.' : '') + (n.note ? ' 한 줄 메모는 옮겨지지 않아요.' : '') + ' 이 메모는 없어져요.</span><button class="btn ghost mini" data-act="nmoveno">취소</button><button class="btn mini" data-act="nmoveyes" data-n="' + n.id + '">옮기기</button></div>';
+      h += '<div class="confirm moveask"><span>챙길 것 목록으로 옮길까요?' + (nm ? ' 준비물 ' + nm + '개가 물건이 돼요.' : '') + (n.note ? ' 한 줄 메모는 옮겨지지 않아요.' : '') + ' 이 메모는 없어져요.</span><button class="btn ghost mini" data-act="nmoveno">취소</button><button class="btn mini" data-act="nmoveyes" data-n="' + n.id + '">옮기기</button></div>';
     } else if (M.ask !== n.id && isOpen) {
       h += '<div class="nactions"><button class="nact" data-act="nedit" data-n="' + n.id + '" aria-label="' + E(n.text) + ' 고치기">✎ 고치기</button>' +
         (M.subFor === n.id ? '' : '<button class="nact" data-act="nsubopen" data-n="' + n.id + '">+ 준비물</button>') +
         (M.editNote === n.id ? '' : '<button class="nact" data-act="nnote" data-n="' + n.id + '">' + (n.note ? '✎ 한 줄 메모' : '+ 한 줄 메모') + '</button>') +
-        '<button class="nact" data-act="nmove" data-n="' + n.id + '">→ 외출준비로</button><button class="nact" data-act="nopen" data-n="' + n.id + '">접기</button></div>';
+        '<button class="nact" data-act="nmove" data-n="' + n.id + '">→ 챙길 것으로</button><button class="nact" data-act="nopen" data-n="' + n.id + '">접기</button></div>';
     }
     h += '</div>' + (M.ask === n.id ? '' : '<button class="del" data-act="ndel" data-n="' + n.id + '" aria-label="' + E(n.text) + ' 지우기">×</button>') + '</li>';
     return h;
@@ -381,12 +381,12 @@
     var tl = L.filter(function (l) { return l.date === ts; });
     var tn = open ? live().filter(function (n) { return n.date === ts; }).sort(byNew) : [];
     var h = '<div class="head"><div><h2>오늘</h2><div class="date">' + fLong(ts) + '</div></div></div>';
-    if (tl.length) h += '<section class="ngroup"><h3>오늘 챙길 외출준비<span class="n">' + tl.length + '개</span></h3>' + tl.map(function (l) { return listCard(l, true); }).join('') + '</section>';
+    if (tl.length) h += '<section class="ngroup"><h3>오늘 챙길 것<span class="n">' + tl.length + '개</span></h3>' + tl.map(function (l) { return listCard(l, true); }).join('') + '</section>';
     if (tn.length) h += group('오늘 일정·메모', 'today', tn);
     if (!tl.length && !tn.length) h += '<div class="empty"><b>오늘은 챙길 게 없어요</b>날짜를 오늘로 넣어 둔 목록과 메모가 여기에 모여요.</div>';
     if (!open) h += '<p class="memo">🔒 메모는 잠겨 있어요. 메모 탭에서 열면 여기에도 보여요.</p>';
     var soon = [];
-    L.forEach(function (l) { if (l.date) { var n = dd(l.date); if (n >= 1 && n <= 7) soon.push({ date: l.date, name: l.name, listId: l.id, kind: '외출준비' }); } });
+    L.forEach(function (l) { if (l.date) { var n = dd(l.date); if (n >= 1 && n <= 7) soon.push({ date: l.date, name: l.name, listId: l.id, kind: '챙길 것' }); } });
     if (open) live().forEach(function (n) { if (n.done || !n.date || n.cat === 'blog') return; var k = dd(n.date); if (k >= 1 && k <= 7) soon.push({ date: n.date, text: n.text, kind: catInfo(n.cat).label }); });
     soon.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
     if (soon.length) h += '<section class="ngroup"><h3>이번 주 다가오는 것<span class="n">' + soon.length + '개</span></h3><ul class="soonlist">' + soon.map(soonRow).join('') + '</ul></section>';
@@ -539,7 +539,7 @@
           items: (mn.sub || []).map(function (s) { return { id: uid(), text: s.text, done: !!s.done }; }) };
         lists.push(nl); save(nl);
         N.notes = N.notes.filter(function (x) { return x.id !== id; }); removeRow(id);
-        say('외출준비 목록으로 옮겼어요');
+        say('챙길 것 목록으로 옮겼어요');
         if (window.goList) window.goList(nl.id); else render();
         return;
       }
