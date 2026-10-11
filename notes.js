@@ -492,6 +492,8 @@
   }
 
   function onClick(e) {
+    var dp = e.target.closest('label.pick');
+    if (dp) { var di = dp.querySelector('input[type=date]'); if (di && di.showPicker) { try { di.showPicker(); } catch (x) {} } return; }
     var el = e.target.closest('[data-act]'); if (!el) return;
     var a = el.getAttribute('data-act'), id = el.getAttribute('data-n'), k = el.getAttribute('data-k');
     var inCal = !!e.currentTarget.id && e.currentTarget.id === 'calSec';
