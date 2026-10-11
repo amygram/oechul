@@ -221,7 +221,7 @@ li.asking{flex-wrap:wrap}
 <body>
 <div class="wrap">
   <header>
-    <div class="titlerow"><h1 id="appTitle">서윤서아네 외출준비❤️</h1><button class="btn ghost mini" id="uiBtn" type="button" aria-label="메뉴 이름 고치기">✎ 메뉴 이름</button></div>
+    <div class="titlerow"><h1 id="appTitle">서윤서아네 외출준비❤️</h1></div>
     <p class="sub" id="appSub">나들이·여행 전에 하나씩 동그라미 쳐요</p>
     <form class="sheet" id="uiForm" hidden></form>
   </header>
@@ -625,7 +625,7 @@ function applyUI(){
   document.getElementById("appSub").hidden=!u.sub; document.title=u.title;
   document.querySelectorAll("#tabs button[data-tab]").forEach(b=>{ b.textContent=u.tabs[b.dataset.tab]; });
 }
-document.getElementById("uiBtn").addEventListener("click",()=>{
+const uiBtn=document.getElementById("uiBtn"); if(uiBtn) uiBtn.addEventListener("click",()=>{
   const f=document.getElementById("uiForm");
   if(!f.hidden){ f.hidden=true; return; }
   const u=uiNow();
