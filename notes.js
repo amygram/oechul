@@ -332,6 +332,7 @@
       return '<button class="nchip ' + (t.k === 'all' ? '' : 'k' + t.c) + '" aria-pressed="' + (M.tab === t.k) + '" data-act="ntab" data-k="' + E(t.k) + '">' + E(t.label) + ' <small>' + t.n + '</small></button>';
     }).join('') + '<button class="nchip dashed" aria-pressed="' + M.manage + '" data-act="nmanage">분류 편집</button></div>';
     if (M.manage) h += manageHTML();
+    h += '<form class="ncomp" id="nQuick" autocomplete="off"><div class="crow"><input id="nQuickText" data-keep="nquick" maxlength="300" placeholder="생각났을 때 바로 적기 (날짜 없이 ‘잡다 메모’에 저장)" enterkeyhint="done" aria-label="바로 적기"><button class="btn" type="submit">추가</button></div></form>';
     h += M.composer ? composerHTML() : '<button class="newbtn" data-act="nnew">+ 새로 적기</button>';
 
     var shown = M.tab === 'all' ? all : all.filter(function (n) { return n.cat === M.tab; });
@@ -603,6 +604,13 @@
       var di = f.querySelector('input'), v = di.value.trim(); if (!v) return;
       var sel = document.getElementById('nDayCat'); C.cat = sel.value;
       addNote(v, C.cat, C.sel); di.value = ''; render();
+    } else if (f.id === 'nQuick') {
+      e.preventDefault();
+      var qi = document.getElementById('nQuickText'), qv = qi.value.trim(); if (!qv) return;
+      var QL = '잡다 메모', qc = N.cats.filter(function (c) { return c.label === QL; })[0], qk = qc ? qc.k : makeCat(QL);
+      if (!qk) return;
+      addNote(qv, qk, ''); qi.value = ''; M.focus = '#nQuickText'; render();
+      say(QL + '에 추가했어요');
     } else if (f.id === 'mNew') {
       e.preventDefault();
       var ni = f.querySelector('input'); var k = makeCat(ni.value); if (k) { ni.value = ''; render(); }
