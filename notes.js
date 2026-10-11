@@ -295,9 +295,10 @@
       var on = !matched && M.pick === o[1]; if (on) matched = true;
       h += '<button type="button" class="nchip" aria-pressed="' + on + '" data-act="npick" data-v="' + o[1] + '">' + o[0] + '</button>';
     });
-    var custom = !!M.pick && !matched;
-    h += '<label class="nchip pick" aria-pressed="' + custom + '"><span>' + (custom ? fShort(M.pick) : '📅 날짜 고르기') + '</span><input type="date" class="dpick" data-chg="pickdate" value="' + (M.pick || '') + '" aria-label="날짜 고르기"></label>';
-    if (M.pick) h += '<button type="button" class="nchip" data-act="npickclr">날짜 지우기</button>';
+    var none = M.pick === 'none', custom = !!M.pick && !none && !matched;
+    h += '<button type="button" class="nchip" aria-pressed="' + none + '" data-act="npick" data-v="none">날짜 없음</button>';
+    h += '<label class="nchip pick" aria-pressed="' + custom + '"><span>' + (custom ? fShort(M.pick) : '📅 날짜 고르기') + '</span><input type="date" class="dpick" data-chg="pickdate" value="' + (custom || matched ? M.pick : '') + '" aria-label="날짜 고르기"></label>';
+    if (M.pick && !none) h += '<button type="button" class="nchip" data-act="npickclr">날짜 지우기</button>';
     return h;
   }
   function composerHTML() {
@@ -451,8 +452,8 @@
   function hint() {
     var el = document.getElementById('nHint'), inp = document.getElementById('nText'); if (!el || !inp) return;
     var raw = inp.value.trim(), ci = catInfo(M.cat);
-    if (!raw) { el.textContent = M.pick ? ci.label + ' · ' + fShort(M.pick) + ' · 내용을 적고 추가를 눌러요' : ci.label + ' · 날짜는 고르거나 글에 써도 돼요 (내일, 토)'; return; }
-    var p = parseDate(raw, M.cat), d = M.pick || p.date;
+    if (!raw) { el.textContent = M.pick === 'none' ? ci.label + ' · 날짜 없이 저장돼요 · 내용을 적고 추가를 눌러요' : M.pick ? ci.label + ' · ' + fShort(M.pick) + ' · 내용을 적고 추가를 눌러요' : ci.label + ' · 날짜는 고르거나 글에 써도 돼요 (내일, 토)'; return; }
+    var p = parseDate(raw, M.cat), d = M.pick === 'none' ? '' : (M.pick || p.date);
     el.textContent = ci.label + (d ? ' · ' + fShort(d) + '에 들어가요' : ' · 날짜 없음 (아래에서 날짜를 고를 수 있어요)');
   }
 
@@ -582,7 +583,7 @@
     if (f.id === 'nComposer') {
       e.preventDefault();
       var inp = document.getElementById('nText'), raw = inp.value.trim(); if (!raw) return;
-      var p = parseDate(raw, M.cat), date = M.pick || p.date, text = p.text || raw;
+      var p = parseDate(raw, M.cat), date = M.pick === 'none' ? '' : (M.pick || p.date), text = (M.pick === 'none' ? raw : p.text) || raw;
       addNote(text, M.cat, date); inp.value = ''; M.pick = ''; M.focus = '#nText'; render(); hint();
       say(catInfo(M.cat).label + '에 추가했어요' + (date ? ' · ' + fShort(date) : ''));
     } else if (f.getAttribute('data-nedit')) {
