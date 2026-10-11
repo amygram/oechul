@@ -65,6 +65,12 @@ li.done .tick svg{opacity:1}
 li.done .txt{color:var(--done);text-decoration:line-through}
 .del{flex:none;border:0;background:transparent;color:var(--muted);font-size:20px;width:32px;height:32px;border-radius:8px}
 .del:hover{color:var(--danger)}
+li.grp{font-family:var(--display);font-size:15px;color:var(--ink);padding:8px 2px 4px;border-bottom:0}
+.starb{flex:none;border:0;background:transparent;color:var(--muted);font-size:24px;width:36px;height:36px;border-radius:8px;padding:0;line-height:1}
+.starb[aria-pressed="true"]{color:var(--sun)}
+li.star{background:var(--sun-soft);border-radius:12px;padding-left:8px;padding-right:8px;margin-bottom:4px;border-bottom:0}
+li.star .txt{font-weight:700}
+li.star.done .txt{font-weight:400}
 form{display:flex;gap:8px}
 input{font:inherit;color:var(--fg);background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0;flex:1}
 .btn{border:0;border-radius:12px;padding:10px 16px;background:var(--ink);color:var(--surface);font-family:var(--display);font-size:16px;flex:none}
@@ -433,10 +439,12 @@ function render(){
   // 고치는 중이면 목록을 다시 그리지 않는다 (쓰던 글자 보호)
   if(!(editing && editing!=="__name" && l.items.some(i=>i.id===editing))){
     if(editing && editing!=="__name") editing=null;
-    const items=V;
-    setHTML(sheet.querySelector("#pItems"), total?`<ul>${items.map(i=>`
-      <li class="${i.done?"done":""}${delAsk===i.id?" asking":""}" data-id="${i.id}">
+    const items=V.filter(i=>i.star).concat(V.filter(i=>!i.star));
+    const nStar=V.filter(i=>i.star).length;
+    setHTML(sheet.querySelector("#pItems"), total?`<ul>${items.map((i,ix)=>`${nStar&&ix===0?`<li class="grp">⭐ 미리 할 것 · 먼저 해두기</li>`:""}${nStar&&ix===nStar&&nStar<total?`<li class="grp">🎒 가기 전에 하나씩 챙기기</li>`:""}
+      <li class="${i.done?"done":""}${i.star?" star":""}${delAsk===i.id?" asking":""}" data-id="${i.id}">
         <button class="tick" data-act="tick" aria-label="${esc(i.text)} ${i.done?"체크 해제":"챙김"}">${TICK}</button>
+        <button class="starb" data-act="star" aria-pressed="${!!i.star}" aria-label="${esc(i.text)} ${i.star?"미리 할 것 해제":"미리 할 것으로 표시"}">${i.star?"★":"☆"}</button>
         <div class="txtwrap" data-act="edit"><span class="txt">${esc(i.text)}</span>${i.memo?`<span class="memo">${esc(i.memo)}</span>`:""}</div>
         ${delAsk===i.id
           ? `<div class="askbox"><span class="askdel">어떻게 할까요?</span><button class="btn mini" data-act="delYes">보관함으로</button><button class="btn warn mini" data-act="delPurge">완전히 삭제</button><button class="btn ghost mini" data-act="delNo">취소</button></div>`
@@ -504,6 +512,7 @@ sheet.addEventListener("click",e=>{
   const l=cur(); if(!l) return;
   const li=el.closest("li"); const it=li && l.items.find(i=>i.id===li.dataset.id);
   if(act==="tick" && it){ it.done=!it.done; render(); save(l); }
+  else if(act==="star" && it){ it.star=!it.star; render(); save(l); toast(it.star?"‘미리 할 것’으로 맨 위에 표시했어요":"표시를 풀었어요"); }
   else if(act==="del" && it){ delAsk=it.id; delAt=Date.now(); render(); }
   else if(act==="delNo"){ delAsk=null; render(); }
   else if(act==="delYes" && it){ if(Date.now()-delAt<500) return; delAsk=null; it.deletedAt=Date.now(); render(); save(l);
