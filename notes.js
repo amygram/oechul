@@ -227,7 +227,8 @@
       (M.editNote === n.id
         ? '<form class="nnoteedit nsubform" data-nnote="' + n.id + '"><input data-keep="nn' + n.id + '" value="' + E(n.note || '') + '" maxlength="200" placeholder="관련 내용 한 줄 (비우면 지워져요)" autocomplete="off" aria-label="한 줄 메모"><button class="btn mini" type="submit">저장</button><button class="btn ghost mini" type="button" data-act="nnotecancel">취소</button></form>'
         : (n.note ? '<div class="nnote" data-act="nnote" data-n="' + n.id + '">' + E(n.note) + '</div>' : '')) + '<div class="nmeta">' +
-      '<button class="ntag" data-act="ncatpick" data-n="' + n.id + '" aria-label="분류 바꾸기: ' + E(ci.label) + '">' + E(ci.label) + '</button>';
+      '<button class="ntag" data-act="ncatpick" data-n="' + n.id + '" aria-label="분류 바꾸기: ' + E(ci.label) + '">' + E(ci.label) + '</button>' +
+      (n.idea ? '<button class="nidea" data-act="nidea" data-n="' + n.id + '" aria-label="예정 표시 (누르면 해제)">💡 예정</button>' : '');
     if (M.editDate === n.id) {
       h += '<input type="date" class="ndate" data-chg="idate" data-n="' + n.id + '" value="' + (n.date || '') + '" aria-label="날짜 바꾸기">' +
         (n.date ? '<button class="btn ghost mini" data-act="ndateclr" data-n="' + n.id + '">날짜 지우기</button>' : '') +
@@ -255,6 +256,7 @@
       h += '<div class="nactions"><button class="nact" data-act="nedit" data-n="' + n.id + '" aria-label="' + E(n.text) + ' 고치기">✎ 고치기</button>' +
         (M.subFor === n.id ? '' : '<button class="nact" data-act="nsubopen" data-n="' + n.id + '">+ 준비물</button>') +
         (M.editNote === n.id ? '' : '<button class="nact" data-act="nnote" data-n="' + n.id + '">' + (n.note ? '✎ 한 줄 메모' : '+ 한 줄 메모') + '</button>') +
+        '<button class="nact" data-act="nidea" data-n="' + n.id + '">' + (n.idea ? '✔ 경험했어요 (예정 해제)' : '💡 예정으로 표시') + '</button>' +
         '<button class="nact" data-act="nmove" data-n="' + n.id + '">→ 챙길 것으로</button><button class="nact" data-act="nopen" data-n="' + n.id + '">접기</button></div>';
     }
     h += '</div>' + (M.ask === n.id ? '' : '<button class="del" data-act="ndel" data-n="' + n.id + '" aria-label="' + E(n.text) + ' 지우기">×</button>') + '</li>';
@@ -307,7 +309,7 @@
       N.cats.map(function (c) { return '<button type="button" class="nchip k' + c.c + '" aria-pressed="' + (M.cat === c.k) + '" data-act="ncat" data-k="' + c.k + '">' + E(c.label) + '</button>'; }).join('') +
       '<button type="button" class="nchip dashed" data-act="naddcat">+ 분류</button></div>';
     if (M.addCat) h += '<div class="nsubform"><input id="nCatName" data-keep="ncatname" maxlength="10" placeholder="새 분류 이름" autocomplete="off" aria-label="새 분류 이름"><button type="button" class="btn mini" data-act="naddcatok">만들기</button><button type="button" class="btn ghost mini" data-act="naddcatcancel">취소</button></div>';
-    h += '<p class="memo">날짜 (안 고르면 날짜 없이 저장돼요)</p><div class="nchips">' + pickChips() + '</div>' +
+    h += '<div class="nchips"><button type="button" class="nchip" aria-pressed="' + !!M.idea + '" data-act="ncidea">💡 예정 · 아직 안 해본 것</button></div><p class="memo">날짜 (안 고르면 날짜 없이 저장돼요)</p><div class="nchips">' + pickChips() + '</div>' +
       '<div class="tools"><button type="button" class="btn ghost mini" data-act="ncompclose">닫기</button></div></form>';
     return h;
   }
@@ -475,8 +477,8 @@
   function render_() { if (typeof render === 'function' && window.render) window.render(); else refresh(); }
 
   /* ---------- 동작 ---------- */
-  function addNote(text, cat, date) {
-    N.notes.push({ id: 'n_' + newId(''), text: text, cat: cat, date: date || '', done: false, created: Date.now() });
+  function addNote(text, cat, date, idea) {
+    N.notes.push({ id: 'n_' + newId(''), text: text, cat: cat, date: date || '', done: false, created: Date.now(), idea: !!idea });
     var n = N.notes[N.notes.length - 1]; put(n.id); return n;
   }
   function makeCat(raw) {
@@ -549,6 +551,8 @@
       case 'nsetcat': M.catPick = null; patch(id, function (n) { n.cat = k; }); return;
       case 'ndate': M.editDate = id; M.catPick = null; M.focus = '.ndate'; render(); return;
       case 'ndateclose': M.editDate = null; render(); return;
+      case 'nidea': patch(id, function (n) { n.idea = !n.idea; }); return;
+      case 'ncidea': M.idea = !M.idea; render(); hint(); return;
       case 'ndateclr': M.editDate = null; patch(id, function (n) { n.date = ''; }); return;
       case 'ndone': M.showDone = !M.showDone; render(); return;
       case 'nsubopen': M.subFor = id; M.focus = '[data-keep="sub' + id + '"]'; render(); return;
@@ -585,7 +589,7 @@
       e.preventDefault();
       var inp = document.getElementById('nText'), raw = inp.value.trim(); if (!raw) return;
       var p = parseDate(raw, M.cat), date = M.pick === 'none' ? '' : (M.pick || p.date), text = (M.pick === 'none' ? raw : p.text) || raw;
-      addNote(text, M.cat, date); inp.value = ''; M.pick = ''; M.focus = '#nText'; render(); hint();
+      addNote(text, M.cat, date, M.idea); inp.value = ''; M.pick = ''; M.idea = false; M.focus = '#nText'; render(); hint();
       say(catInfo(M.cat).label + '에 추가했어요' + (date ? ' · ' + fShort(date) : ''));
     } else if (f.getAttribute('data-nedit')) {
       e.preventDefault();
